@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "[0-9]*"
 
 permissions:
   contents: write
@@ -56,5 +57,5 @@ jobs:
             dist/contex-agent/styles.css
             release/contex-agent-${{ github.ref_name }}.zip
             dist/contex-agent-release.json
-          draft: true
+          draft: false
           generate_release_notes: true
