@@ -3,7 +3,7 @@
   "name": "Contex Agent",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Talk to your Obsidian vault.",
+  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Contex Code.",
   "author": "Contex",
   "isDesktopOnly": true
 }
