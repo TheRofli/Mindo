@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Build Rust sidecar
+        run: npm run core:build
+
+      - name: Install Rust sidecar
+        run: npm run core:install
+
+      - name: Package plugin
+        run: npm run package
+
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path dist/contex-agent/* -DestinationPath "release/contex-agent-$version.zip" -Force
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/contex-agent/manifest.json
+            dist/contex-agent/main.js
+            dist/contex-agent/styles.css
+            release/contex-agent-${{ github.ref_name }}.zip
+            dist/contex-agent-release.json
+          draft: true
+          generate_release_notes: true

@@ -1,0 +1,23 @@
+{
+  "baseUrl": "http://127.0.0.1:8085/v1",
+  "apiKey": "dummy",
+  "model": "gemma-4-e4b-it",
+  "temperature": 0.3,
+  "supportsVision": true,
+  "sttEndpoint": "http://127.0.0.1:9000/transcribe",
+  "sttBackend": "parakeet",
+  "autoStartLocalStt": true,
+  "sttModel": "nvidia/parakeet-tdt-0.6b-v3",
+  "sttQualityMode": "quality",
+  "sttLanguage": "auto",
+  "ttsProvider": "silero",
+  "autoStartLocalTts": true,
+  "fallbackToBrowserTts": false,
+  "webSearchEnabled": false,
+  "webSearchProvider": "duckduckgo",
+  "webSearchEndpoint": "http://127.0.0.1:8080/search",
+  "webSearchMaxResults": 6,
+  "wikiEnabled": true,
+  "wikiRootFolder": "Contex Wiki",
+  "wikiMemoryMode": "auto-safe"
+}

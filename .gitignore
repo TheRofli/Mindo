@@ -1,0 +1,38 @@
+node_modules/
+.npm-cache/
+.cache/
+dist/
+release/
+*.zip
+
+# Local environment / secrets.
+.env
+.env.*
+!.env.example
+
+# User-local Obsidian plugin state. Never publish API keys.
+data.json
+
+# Internal planning / handoff notes. Keep public repo focused on product code.
+Codex_Start_Prompt_Contex_Agent_MVP_FINAL_BRANDING.md
+Contex_Agent_Next_Chat_Handoff.md
+Contex_Agent_for_Obsidian_Full_Project_Spec_v3_FINAL_BRANDING.md
+Contex_Project_Status.md
+в папке Obsidian с контекс код.md
+
+# Local runtime caches and downloaded models.
+.contex-docker/
+.contex-piper/
+.contex-stt/
+.contex-stt-runtime/
+.python-stt/
+.venv-stt/
+tools/**/__pycache__/
+*.pyc
+
+# Rust build output.
+tools/contex_core/target/
+
+# Local editor / OS noise.
+.DS_Store
+Thumbs.db

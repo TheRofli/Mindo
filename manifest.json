@@ -1,0 +1,9 @@
+{
+  "id": "contex-agent",
+  "name": "Contex Agent",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Talk to your Obsidian vault.",
+  "author": "Contex",
+  "isDesktopOnly": true
+}

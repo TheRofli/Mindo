@@ -1,0 +1,42 @@
+{
+  "name": "contex-agent",
+  "version": "0.1.0",
+  "description": "Talk to your Obsidian vault.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "node scripts/run-tests.mjs",
+    "verify": "npm run test && npm run core:test && npm run build",
+    "package": "npm run build && node scripts/package-plugin.mjs",
+    "release:check": "npm run verify && node scripts/package-plugin.mjs --check",
+    "core:test": "node scripts/run-cargo.mjs test --manifest-path tools/contex_core/Cargo.toml",
+    "core:build": "node scripts/run-cargo.mjs build --release --manifest-path tools/contex_core/Cargo.toml",
+    "core:bench": "node scripts/run-cargo.mjs test --release --manifest-path tools/contex_core/Cargo.toml",
+    "core:install": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"New-Item -ItemType Directory -Force bin | Out-Null; Copy-Item tools/contex_core/target/release/contex-core.exe bin/contex-core.exe -Force\"",
+    "stt:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/stt_server/start_stt_server.ps1 -InstallOnly",
+    "stt:install:parakeet": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$env:CONTEX_STT_BACKEND='parakeet'; & tools/stt_server/start_stt_server.ps1 -InstallOnly\"",
+    "stt:start": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/stt_server/start_stt_server.ps1",
+    "stt:start:parakeet": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$env:CONTEX_STT_BACKEND='parakeet'; $env:CONTEX_STT_MODEL='nvidia/parakeet-tdt-0.6b-v3'; & tools/stt_server/start_stt_server.ps1\"",
+    "tts:kokoro:start": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/tts_server/start_kokoro_server.ps1",
+    "tts:kokoro:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/tts_server/stop_kokoro_server.ps1",
+    "tts:silero:start": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/tts_server/start_silero_server.ps1",
+    "tts:silero:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/tts_server/stop_silero_server.ps1"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "contex-agent"
+  ],
+  "author": "Contex",
+  "license": "SEE LICENSE IN LICENSE",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "esbuild-wasm": "^0.28.0",
+    "obsidian": "^1.5.12",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
