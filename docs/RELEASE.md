@@ -78,5 +78,9 @@ Attach the contents of `dist/contex-agent` or a zip created from that folder.
 
 Do not attach local `data.json`.
 
-The recommended release path is to push a `vX.Y.Z` tag and let
-`.github/workflows/release.yml` create a draft release.
+The recommended release path is to push a tag that exactly matches
+`manifest.json` -> `version`, for example `0.1.0`, and let
+`.github/workflows/release.yml` create the GitHub release.
+
+For Obsidian Community Plugin submission, do not use only a `vX.Y.Z` release:
+the review bot expects a release tag matching the manifest version exactly.

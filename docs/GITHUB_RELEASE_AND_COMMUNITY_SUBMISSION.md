@@ -50,22 +50,25 @@ dist/contex-agent
 
 ## GitHub Release
 
-Create a tag:
+Create a tag that exactly matches `manifest.json` -> `version`.
+For version `0.1.0`, use `0.1.0`, not `v0.1.0`; the Obsidian submission bot
+looks for a GitHub Release whose tag is exactly the manifest version.
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag 0.1.0
+git push origin 0.1.0
 ```
 
-The `Release` workflow creates a draft GitHub release with:
+The `Release` workflow creates a GitHub release with:
 
 - `manifest.json`
 - `main.js`
 - `styles.css`
-- `contex-agent-vX.Y.Z.zip`
+- `contex-agent-X.Y.Z.zip`
 - `contex-agent-release.json`
 
-Keep the release draft until you manually inspect the assets.
+Open the release and manually inspect the assets before submitting to the
+community plugin catalog.
 
 ## Obsidian Community Plugin Submission
 
@@ -81,7 +84,7 @@ After the GitHub repo and first release are ready:
      "id": "contex-agent",
      "name": "Contex Agent",
      "author": "Contex",
-     "description": "Talk to your Obsidian vault with a local-first AI agent.",
+     "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Contex Code.",
      "repo": "your-github-user/contex-agent"
    }
    ```
@@ -127,6 +130,6 @@ Highlights:
 - early Contex Code planning workflow.
 
 Install:
-Download `contex-agent-v0.1.0.zip`, extract it to
+Download `contex-agent-0.1.0.zip`, extract it to
 `Vault/.obsidian/plugins/contex-agent`, then enable the plugin in Obsidian.
 ```

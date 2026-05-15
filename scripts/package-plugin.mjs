@@ -32,9 +32,19 @@ const ignoredDirectoryNames = new Set([
   "node_modules",
   "target",
   "__pycache__",
-  ".pytest_cache"
+  ".pytest_cache",
+  ".cache",
+  ".contex-stt-runtime",
+  ".huggingface",
+  "pip-cache"
 ]);
-const ignoredFileNames = new Set(["data.json", ".DS_Store", "Thumbs.db"]);
+const ignoredFileNames = new Set([
+  "data.json",
+  ".env",
+  ".env.local",
+  ".DS_Store",
+  "Thumbs.db"
+]);
 const ignoredExtensions = new Set([".pyc"]);
 
 const missing = requiredFiles.filter((file) => !existsSync(join(pluginDir, file)));
@@ -53,6 +63,20 @@ const versions = existsSync(join(pluginDir, "versions.json"))
 if (manifest.version !== packageJson.version) {
   console.error(
     `Version mismatch: manifest.json=${manifest.version} package.json=${packageJson.version}`
+  );
+  process.exit(1);
+}
+
+if (manifest.description !== packageJson.description) {
+  console.error(
+    `Description mismatch: manifest.json="${manifest.description}" package.json="${packageJson.description}"`
+  );
+  process.exit(1);
+}
+
+if (/\bobsidian\b/i.test(manifest.description)) {
+  console.error(
+    "manifest.json description must not include the word Obsidian for community plugin submission."
   );
   process.exit(1);
 }

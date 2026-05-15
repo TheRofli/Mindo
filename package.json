@@ -1,7 +1,7 @@
 {
   "name": "contex-agent",
   "version": "0.1.0",
-  "description": "Talk to your Obsidian vault.",
+  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Contex Code.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",
