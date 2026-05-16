@@ -27,9 +27,7 @@ export function encodeRustCoreSearchWireRequest(
   return `${lines.join("\n")}\n`;
 }
 
-export function getRustCoreExecutableName(
-  platform: NodeJS.Platform = process.platform
-): string {
+export function getRustCoreExecutableName(platform: NodeJS.Platform): string {
   return platform === "win32" ? "contex-core.exe" : "contex-core";
 }
 

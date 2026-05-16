@@ -27,7 +27,7 @@
 .contex-agent.contex-agent--font-comfortaa :is(button, input, textarea, select, span, div, p, label, small, summary, h1, h2, h3, h4, h5, h6, li),
 .contex-agent:not(.contex-agent--font-obsidian),
 .contex-agent:not(.contex-agent--font-obsidian) :is(button, input, textarea, select, span, div, p, label, small, summary, h1, h2, h3, h4, h5, h6, li) {
-  font-family: var(--mindo-font-family) !important;
+  font-family: var(--mindo-font-family);
 }
 
 .contex-agent:not(.contex-agent--font-obsidian),
@@ -40,7 +40,7 @@
 .contex-agent.contex-agent--font-comfortaa textarea,
 .contex-agent:not(.contex-agent--font-obsidian) select,
 .contex-agent.contex-agent--font-comfortaa select {
-  font-family: var(--mindo-font-family) !important;
+  font-family: var(--mindo-font-family);
 }
 
 .contex-agent:not(.contex-agent--font-obsidian) .markdown-rendered,
@@ -53,7 +53,7 @@
 .contex-agent.contex-agent--font-comfortaa .contex-agent__message-content p,
 .contex-agent:not(.contex-agent--font-obsidian) .contex-agent__input::placeholder,
 .contex-agent.contex-agent--font-comfortaa .contex-agent__input::placeholder {
-  font-family: var(--mindo-font-family) !important;
+  font-family: var(--mindo-font-family);
 }
 
 .workspace-leaf-content[data-type="mindo-view"] .contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-button,
@@ -64,7 +64,7 @@
 .contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-label,
 .contex-agent.contex-agent--font-comfortaa .contex-agent__input,
 .contex-agent.contex-agent--font-comfortaa .contex-agent__input::placeholder {
-  font-family: var(--mindo-font-family) !important;
+  font-family: var(--mindo-font-family);
 }
 
 .contex-agent.contex-agent--font-obsidian,
@@ -77,7 +77,7 @@
 .contex-agent.contex-agent--font-obsidian .contex-agent__message-content,
 .contex-agent.contex-agent--font-obsidian .contex-agent__message-content p,
 .contex-agent.contex-agent--font-obsidian .contex-agent__input::placeholder {
-  font-family: var(--font-interface) !important;
+  font-family: var(--font-interface);
 }
 
 .contex-agent__header {
@@ -192,7 +192,7 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent__hidden {
-  display: none !important;
+  display: none;
 }
 
 .contex-agent__meta > :not(.contex-agent__error) {
@@ -385,12 +385,12 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent__live-transcript-text.markdown-rendered {
-  color: #16131c !important;
+  color: #16131c;
   white-space: normal;
 }
 
 .contex-agent__live-transcript-text.markdown-rendered :is(p, li, strong, em, span, div, h1, h2, h3, h4, h5, h6, blockquote, code) {
-  color: #16131c !important;
+  color: #16131c;
 }
 
 .contex-agent__live-transcript-text > :first-child {
@@ -422,10 +422,10 @@ body.theme-dark .contex-agent__logo--dark {
   width: min(210px, 58vw);
   height: 148px;
   padding: 0;
-  border: 0 !important;
+  border: 0;
   border-radius: 28px;
-  background: transparent !important;
-  box-shadow: 0 0 0 9px rgba(var(--color-accent-rgb), var(--contex-live-glow)) !important;
+  background: transparent;
+  box-shadow: 0 0 0 9px rgba(var(--color-accent-rgb), var(--contex-live-glow));
   color: var(--text-normal);
   transform: scale(var(--contex-live-scale));
   transition:
@@ -443,8 +443,8 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__live-orb,
 .contex-agent button.contex-agent__live-orb:hover,
 .contex-agent button.contex-agent__live-orb:focus {
-  border-color: transparent !important;
-  background-color: transparent !important;
+  border-color: transparent;
+  background-color: transparent;
 }
 
 .contex-agent__live-orb-logo {
@@ -844,7 +844,7 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__message-content.markdown-rendered,
 .contex-agent__message-content.markdown-rendered :is(p, li, strong, em, span, div, h1, h2, h3, h4, h5, h6, blockquote, code) {
-  color: #16131c !important;
+  color: #16131c;
 }
 
 .contex-agent__message-content--plain {
@@ -1050,7 +1050,7 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__diff-status--rejected {
   color: var(--text-muted);
-  text-decoration: line-through;
+  opacity: 0.62;
 }
 
 .contex-agent__diff-status--reverted {
@@ -1179,9 +1179,11 @@ body.theme-dark .contex-agent__logo--dark {
 .cm-content .contex-agent-inline-diff-original {
   border-radius: 3px;
   background: rgba(var(--color-red-rgb), 0.14);
+  background-image: linear-gradient(var(--text-error), var(--text-error));
+  background-position: left 58%;
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
   color: var(--text-error);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
 }
 
 .contex-agent-inline-diff {
@@ -1732,8 +1734,8 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent__input:hover,
 .contex-agent__input:focus,
 .contex-agent__input:active {
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   outline: none;
 }
 
@@ -1976,16 +1978,16 @@ body.theme-dark .contex-agent__logo--dark {
   min-width: 30px;
   height: 24px;
   padding: 0 6px;
-  border: 0 !important;
+  border: 0;
   border-radius: 999px;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   color: var(--text-muted);
 }
 
 .contex-agent__typing-cancel:hover,
 .contex-agent__typing-cancel:focus {
-  background: var(--background-modifier-hover) !important;
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
@@ -2171,8 +2173,8 @@ body.theme-dark .contex-agent__logo--dark {
   padding: 4px 8px;
   border: 0;
   border-radius: 6px;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   color: var(--text-muted);
   text-align: left;
   line-height: 1.15;
@@ -2180,13 +2182,13 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__model-menu-item:hover,
 .contex-agent__model-menu-item:focus {
-  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
+  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent);
   color: #f4f1ff;
   box-shadow: none;
 }
 
 .contex-agent__model-menu-item.is-active {
-  background: transparent !important;
+  background: transparent;
   color: var(--mindo-accent);
   box-shadow: none;
 }
@@ -2232,8 +2234,8 @@ body.theme-dark .contex-agent__logo--dark {
   padding: 4px 8px;
   border: 0;
   border-radius: 6px;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
   color: var(--text-muted);
   text-align: left;
   font-size: var(--font-ui-smaller);
@@ -2267,7 +2269,7 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__action-menu-item:hover,
 .contex-agent__action-menu-item:focus {
-  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
+  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent);
   color: #f4f1ff;
   box-shadow: none;
 }
@@ -2532,9 +2534,9 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__action-menu-item,
 .contex-agent button.contex-agent__chat-menu-button,
 .contex-agent button.contex-agent__chat-menu-item {
-  border-color: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
 }
 
 .contex-agent button.contex-agent__header-icon:hover,
@@ -2551,55 +2553,55 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__chat-menu-button:focus,
 .contex-agent button.contex-agent__chat-menu-item:hover,
 .contex-agent button.contex-agent__chat-menu-item:focus {
-  border-color: transparent !important;
-  background-color: var(--background-modifier-hover) !important;
-  box-shadow: none !important;
+  border-color: transparent;
+  background-color: var(--background-modifier-hover);
+  box-shadow: none;
 }
 
 .contex-agent button.contex-agent__icon-button:disabled:hover,
 .contex-agent button.contex-agent__icon-button:disabled:focus {
-  background-color: transparent !important;
+  background-color: transparent;
 }
 
 .contex-agent button.contex-agent__model-menu-item:hover,
 .contex-agent button.contex-agent__model-menu-item:focus,
 .contex-agent button.contex-agent__action-menu-item:hover,
 .contex-agent button.contex-agent__action-menu-item:focus {
-  background-color: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
-  color: #f4f1ff !important;
+  background-color: color-mix(in srgb, var(--mindo-accent) 18%, transparent);
+  color: #f4f1ff;
 }
 
 .contex-agent button.contex-agent__model-menu-item.is-active {
-  background-color: transparent !important;
-  color: var(--mindo-accent) !important;
+  background-color: transparent;
+  color: var(--mindo-accent);
 }
 
 .contex-agent button.contex-agent__chat-menu-item:hover,
 .contex-agent button.contex-agent__chat-menu-item:focus {
-  background-color: color-mix(in srgb, var(--mindo-accent) 16%, transparent) !important;
-  color: #f4f1ff !important;
+  background-color: color-mix(in srgb, var(--mindo-accent) 16%, transparent);
+  color: #f4f1ff;
 }
 
 .contex-agent button.contex-agent__chat-menu-item.is-active {
-  background-color: transparent !important;
-  color: var(--mindo-accent) !important;
+  background-color: transparent;
+  color: var(--mindo-accent);
 }
 
 .contex-agent__prompt-box,
 .contex-agent__prompt-box:hover,
 .contex-agent__prompt-box:focus-within {
-  background: var(--background-primary) !important;
-  box-shadow: none !important;
+  background: var(--background-primary);
+  box-shadow: none;
 }
 
 .contex-agent__prompt-box button.mod-cta {
-  color: var(--text-normal) !important;
+  color: var(--text-normal);
   padding-inline: var(--size-2-2);
 }
 
 .contex-agent button.contex-agent__icon-button.is-recording {
-  background-color: rgba(var(--color-red-rgb), 0.18) !important;
-  color: var(--text-error) !important;
+  background-color: rgba(var(--color-red-rgb), 0.18);
+  color: var(--text-error);
 }
 
 .markdown-rendered .callout[data-callout="contex-code"],
@@ -2708,5 +2710,12 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-code-plan-id {
-  display: none !important;
+  display: none;
+}
+
+.workspace-leaf-content[data-type="mindo-view"] .contex-agent .contex-agent__hidden,
+.contex-agent .contex-agent__hidden,
+.markdown-rendered .contex-code-plan-id,
+.markdown-source-view.mod-cm6 .contex-code-plan-id {
+  display: none;
 }

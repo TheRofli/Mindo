@@ -47,11 +47,9 @@ export function getEndpointHost(endpoint: string, fallbackHost: string): string 
 }
 
 export function getLocalKokoroEnvironment(
-  settings: ContexSettings,
-  baseEnvironment: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv {
+  settings: ContexSettings
+): Record<string, string> {
   return {
-    ...baseEnvironment,
     MINDO_KOKORO_JS_PORT: String(getEndpointPort(settings.kokoroTtsEndpoint, 9200)),
     MINDO_KOKORO_MODEL:
       settings.kokoroModel || DEFAULT_SETTINGS.kokoroModel,
@@ -61,13 +59,11 @@ export function getLocalKokoroEnvironment(
 }
 
 export function getLocalSttEnvironment(
-  settings: ContexSettings,
-  baseEnvironment: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv {
+  settings: ContexSettings
+): Record<string, string> {
   const language = settings.sttLanguage.trim();
 
   return {
-    ...baseEnvironment,
     MINDO_STT_BACKEND: settings.sttBackend,
     MINDO_STT_MODEL: settings.sttModel || DEFAULT_SETTINGS.sttModel,
     MINDO_STT_HOST: getEndpointHost(settings.sttEndpoint, "127.0.0.1"),
@@ -87,11 +83,9 @@ export function getLocalSttEnvironment(
 }
 
 export function getLocalSileroEnvironment(
-  settings: ContexSettings,
-  baseEnvironment: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv {
+  settings: ContexSettings
+): Record<string, string> {
   return {
-    ...baseEnvironment,
     MINDO_SILERO_VOICE: getConfiguredLocalSileroVoiceName(settings),
     MINDO_SILERO_PORT: String(getEndpointPort(settings.sileroTtsEndpoint, 9100))
   };

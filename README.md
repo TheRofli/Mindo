@@ -70,6 +70,14 @@ npm run core:build
 npm run core:install
 ```
 
+## Runtime Permissions
+
+Mindo is desktop-only because it can start local helper processes for STT/TTS
+and the optional Rust search sidecar. That requires Node's `child_process`
+module and limited filesystem access for bundled runtime files, local logs,
+and generated release assets. Local settings and API keys stay in Obsidian's
+plugin data file and must not be committed.
+
 Package a clean release folder:
 
 ```bash
@@ -87,9 +95,7 @@ Read the release docs before making the repository public:
 - `docs/GITHUB_RELEASE_AND_COMMUNITY_SUBMISSION.md`
 - `docs/PUBLICATION_SECURITY.md`
 
-Mindo is source-available. Users may install, run, and inspect the
-plugin, but redistribution, competing products, and commercial reuse require
-permission. See `LICENSE`.
+Mindo is released under the MIT license. See `LICENSE`.
 
 ## Release Notes
 

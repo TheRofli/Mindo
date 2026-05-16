@@ -17,8 +17,8 @@ Use this checklist before making the repository public.
 ## Source Visibility Strategy
 
 For official Obsidian Community Plugin submission, the source repository must
-be reviewable. The realistic protection strategy is source-available, not
-secret-source.
+be reviewable. Mindo is published as an MIT-licensed source repository so
+reviewers and users can inspect the behavior clearly.
 
 Recommended public/private split:
 
@@ -37,12 +37,12 @@ Recommended public/private split:
 
 ## License Position
 
-Mindo now uses a source-available license:
+Mindo uses the MIT license:
 
-- users may download, install, run, and inspect it;
-- users may not repackage it as a competing product;
-- users may not reuse substantial code, workflows, prompts, or assets in
-  another AI assistant product without permission.
+- users may download, install, run, inspect, modify, and redistribute it;
+- the license is recognized by GitHub and Obsidian review tooling;
+- the Mindo name, logo, and product identity should still be handled with care
+  as project branding.
 
 This is not legal advice. Before a serious public launch, have a lawyer review
 the license text.
@@ -57,6 +57,21 @@ Recommended repository settings:
 - Use GitHub release drafts.
 - Use Dependabot only for dev dependencies you are ready to update.
 - Do not store API keys in repository secrets unless a workflow needs them.
+
+## Runtime Permission Notes
+
+The plugin intentionally uses Node desktop APIs:
+
+- `child_process` starts the bundled PowerShell launchers for local STT/TTS
+  services and the optional Rust `contex-core` sidecar.
+- filesystem access is used for packaged runtime files, release packaging,
+  local helper logs, and sidecar discovery.
+- runtime helper scripts may use environment variables for local model/cache
+  directories, but the main plugin code avoids reading hostname/user profile
+  identity data directly.
+
+Keep this section aligned with the code before each community release so users
+can understand why Obsidian's automated review flags these capabilities.
 
 ## Pre-Publish Command
 

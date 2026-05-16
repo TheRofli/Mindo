@@ -30,12 +30,12 @@ assert.ok(
   )
 );
 assert.ok(
-  /\.contex-agent\.contex-agent--font-comfortaa \.contex-agent__chat-menu-button[\s\S]*font-family:\s*var\(--mindo-font-family\) !important;/s.test(
+  /\.contex-agent\.contex-agent--font-comfortaa \.contex-agent__chat-menu-button[\s\S]*font-family:\s*var\(--mindo-font-family\);/s.test(
     styles
   )
 );
 assert.ok(
-  /\.contex-agent\.contex-agent--font-comfortaa \.contex-agent__input::placeholder[\s\S]*font-family:\s*var\(--mindo-font-family\) !important;/s.test(
+  /\.contex-agent\.contex-agent--font-comfortaa \.contex-agent__input::placeholder[\s\S]*font-family:\s*var\(--mindo-font-family\);/s.test(
     styles
   )
 );

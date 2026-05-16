@@ -6,7 +6,7 @@ import {
   appendFileSync,
   mkdirSync
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { Notice, Plugin, requestUrl, TFile, WorkspaceLeaf } from "obsidian";
 import { buildContexDoctorReport } from "./diagnostics/contexDoctor";
 import { DoctorModal } from "./diagnostics/DoctorModal";
@@ -908,16 +908,12 @@ export default class ContexAgentPlugin extends Plugin {
     );
     this.localSttProcess = spawn(
       "powershell.exe",
-      [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        scriptPath
-      ],
+      this.getPowerShellScriptCommandArgs(
+        scriptPath,
+        getLocalSttEnvironment(this.settings)
+      ),
       {
         cwd: pluginDir,
-        env: getLocalSttEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -1033,16 +1029,12 @@ export default class ContexAgentPlugin extends Plugin {
     this.writeLocalKokoroLog("\n\n=== Starting Mindo Local Kokoro JS TTS Server ===\n");
     this.localKokoroProcess = spawn(
       "powershell.exe",
-      [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        scriptPath
-      ],
+      this.getPowerShellScriptCommandArgs(
+        scriptPath,
+        getLocalKokoroEnvironment(this.settings)
+      ),
       {
         cwd: pluginDir,
-        env: getLocalKokoroEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -1151,16 +1143,12 @@ export default class ContexAgentPlugin extends Plugin {
     this.writeLocalSileroLog("\n\n=== Starting Mindo Local Silero TTS Server ===\n");
     this.localSileroProcess = spawn(
       "powershell.exe",
-      [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        scriptPath
-      ],
+      this.getPowerShellScriptCommandArgs(
+        scriptPath,
+        getLocalSileroEnvironment(this.settings)
+      ),
       {
         cwd: pluginDir,
-        env: getLocalSileroEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -1343,6 +1331,30 @@ export default class ContexAgentPlugin extends Plugin {
     });
   }
 
+  private getPowerShellScriptCommandArgs(
+    scriptPath: string,
+    environment: Record<string, string>
+  ): string[] {
+    const assignments = Object.entries(environment)
+      .map(
+        ([key, value]) =>
+          `$env:${key}=${this.quotePowerShellString(value)};`
+      )
+      .join(" ");
+
+    return [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      `${assignments} & ${this.quotePowerShellString(scriptPath)}`
+    ];
+  }
+
+  private quotePowerShellString(value: string): string {
+    return `'${value.replace(/'/g, "''")}'`;
+  }
+
   private writeLocalSttLog(message: string): void {
     const logPath = this.getPluginFullPath(".mindo-stt/stt.log");
 
@@ -1359,20 +1371,7 @@ export default class ContexAgentPlugin extends Plugin {
   }
 
   private writeLocalKokoroLog(message: string): void {
-    const localAppData = process.env.LOCALAPPDATA?.trim();
-    const userProfile = process.env.USERPROFILE?.trim();
-    const logPath = localAppData
-      ? join(localAppData, "Mindo", "kokoro-js", "kokoro-plugin.log")
-      : userProfile
-        ? join(
-            userProfile,
-            "AppData",
-            "Local",
-            "Mindo",
-            "kokoro-js",
-            "kokoro-plugin.log"
-          )
-        : this.getPluginFullPath(".mindo-kokoro-js/kokoro-plugin.log");
+    const logPath = this.getPluginFullPath(".mindo-kokoro-js/kokoro-plugin.log");
 
     if (!logPath) {
       return;
@@ -1387,20 +1386,7 @@ export default class ContexAgentPlugin extends Plugin {
   }
 
   private writeLocalSileroLog(message: string): void {
-    const localAppData = process.env.LOCALAPPDATA?.trim();
-    const userProfile = process.env.USERPROFILE?.trim();
-    const logPath = localAppData
-      ? join(localAppData, "Mindo", "silero", "silero-plugin.log")
-      : userProfile
-        ? join(
-            userProfile,
-            "AppData",
-            "Local",
-            "Mindo",
-            "silero",
-            "silero-plugin.log"
-          )
-        : this.getPluginFullPath(".mindo-silero/silero-plugin.log");
+    const logPath = this.getPluginFullPath(".mindo-silero/silero-plugin.log");
 
     if (!logPath) {
       return;

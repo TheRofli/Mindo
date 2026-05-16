@@ -46,14 +46,16 @@ assert.ok(
   "Expected normal chat messages to use the same soft drawn bubble style as live dialogue."
 );
 assert.ok(
-  /\.contex-agent__message-content\.markdown-rendered[\s\S]*color:\s*#16131c\s*!important/s.test(
+  /\.contex-agent__message-content\.markdown-rendered[\s\S]*color:\s*#16131c;/s.test(
     styles
   ) &&
-    /\.contex-agent__live-transcript-text\.markdown-rendered[\s\S]*color:\s*#16131c\s*!important/s.test(
+    /\.contex-agent__live-transcript-text\.markdown-rendered[\s\S]*color:\s*#16131c;/s.test(
       styles
     ),
   "Expected rendered Markdown inside chat and live dialogue bubbles to stay dark on the light bubble background."
 );
+assert.ok(!styles.includes("!important"), "Expected Mindo styles to avoid !important overrides.");
+assert.ok(!styles.includes("text-decoration"), "Expected Mindo styles to avoid partially supported text-decoration.");
 assert.ok(
   isDirectOpenCandidateCheckedBeforeRust(sidebarView),
   "Expected open-file routing to prefer exact vault filename/folder matches before Rust fallback."

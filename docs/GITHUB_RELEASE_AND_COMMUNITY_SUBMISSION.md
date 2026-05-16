@@ -13,7 +13,7 @@ The practical protection model is:
 
 - publish source that Obsidian can review;
 - keep local secrets, caches, downloaded models, and user data out of GitHub;
-- use the Mindo Source Available License instead of MIT;
+- use the MIT license so GitHub and review tooling can recognize the license;
 - split future proprietary services or hosted runtimes into a private backend
   if they must remain closed.
 
@@ -51,12 +51,12 @@ dist/mindo
 ## GitHub Release
 
 Create a tag that exactly matches `manifest.json` -> `version`.
-For version `0.2.0`, use `0.2.0`, not `v0.2.0`; the Obsidian submission bot
+For version `0.2.1`, use `0.2.1`, not `v0.2.1`; the Obsidian submission bot
 looks for a GitHub Release whose tag is exactly the manifest version.
 
 ```bash
-git tag 0.2.0
-git push origin 0.2.0
+git tag 0.2.1
+git push origin 0.2.1
 ```
 
 The `Release` workflow creates a GitHub release with:
@@ -116,7 +116,7 @@ submitting to the official Community Plugins catalog.
 ## Release Notes Template
 
 ```markdown
-## Mindo v0.2.0
+## Mindo v0.2.1
 
 Mindo is a local-first AI companion for Obsidian.
 
@@ -130,6 +130,6 @@ Highlights:
 - early Mindo Code planning workflow.
 
 Install:
-Download `mindo-0.2.0.zip`, extract it to
+Download `mindo-0.2.1.zip`, extract it to
 `Vault/.obsidian/plugins/mindo`, then enable the plugin in Obsidian.
 ```

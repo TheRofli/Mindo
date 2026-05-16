@@ -57,9 +57,9 @@ export async function searchWithRustCore(
 
 export function resolveRustCoreExecutablePath(
   pluginDir: string,
-  platform: NodeJS.Platform = process.platform
+  platform?: NodeJS.Platform
 ): string | null {
-  const cacheKey = `${platform}:${pluginDir}`;
+  const cacheKey = `${platform ?? "auto"}:${pluginDir}`;
   const cached = executablePathCache.get(cacheKey);
 
   if (cached && existsSync(cached)) {
@@ -82,11 +82,13 @@ export function resolveRustCoreExecutablePath(
 
 export function getRustCoreCandidatePaths(
   pluginDir: string,
-  platform: NodeJS.Platform = process.platform
+  platform?: NodeJS.Platform
 ): string[] {
-  const executableName = getRustCoreExecutableName(platform);
+  const executableNames = platform
+    ? [getRustCoreExecutableName(platform)]
+    : ["contex-core.exe", "contex-core"];
 
-  return [
+  return executableNames.flatMap((executableName) => [
     join(pluginDir, "bin", executableName),
     join(
       pluginDir,
@@ -96,7 +98,7 @@ export function getRustCoreCandidatePaths(
       "release",
       executableName
     )
-  ];
+  ]);
 }
 
 function runRustCoreProcess(

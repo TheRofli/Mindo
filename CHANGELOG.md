@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Switched to the recognized MIT license.
+- Removed `!important` CSS overrides and avoided `text-decoration`.
+- Reduced system identity warnings by removing direct `process.*` reads from the plugin bundle.
+- Documented why local filesystem and shell access are required for bundled desktop runtimes.
+
 ## 0.2.0
 
 - Renamed public plugin identity from Contex Agent to Mindo.
