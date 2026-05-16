@@ -1,10 +1,83 @@
+@font-face {
+  font-family: "Mindo Comfortaa";
+  src: url("./assets/fonts/comfortaa/Comfortaa-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 .contex-agent {
+  --mindo-accent: #7b6cf6;
+  --mindo-ink: #111018;
+  --mindo-font-family: "Mindo Comfortaa", var(--font-interface);
+  --mindo-drawn-border: color-mix(in srgb, var(--mindo-ink) 64%, var(--background-modifier-border));
+  --mindo-menu-bg: color-mix(in srgb, var(--background-primary) 94%, var(--background-secondary));
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   gap: 0;
-  padding: 12px;
+  padding: 8px 8px 10px;
+  font-family: var(--mindo-font-family);
+}
+
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa,
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa :is(button, input, textarea, select, span, div, p, label, small, summary, h1, h2, h3, h4, h5, h6, li),
+.contex-agent.contex-agent--font-comfortaa,
+.contex-agent.contex-agent--font-comfortaa :is(button, input, textarea, select, span, div, p, label, small, summary, h1, h2, h3, h4, h5, h6, li),
+.contex-agent:not(.contex-agent--font-obsidian),
+.contex-agent:not(.contex-agent--font-obsidian) :is(button, input, textarea, select, span, div, p, label, small, summary, h1, h2, h3, h4, h5, h6, li) {
+  font-family: var(--mindo-font-family) !important;
+}
+
+.contex-agent:not(.contex-agent--font-obsidian),
+.contex-agent.contex-agent--font-comfortaa,
+.contex-agent:not(.contex-agent--font-obsidian) button,
+.contex-agent.contex-agent--font-comfortaa button,
+.contex-agent:not(.contex-agent--font-obsidian) input,
+.contex-agent.contex-agent--font-comfortaa input,
+.contex-agent:not(.contex-agent--font-obsidian) textarea,
+.contex-agent.contex-agent--font-comfortaa textarea,
+.contex-agent:not(.contex-agent--font-obsidian) select,
+.contex-agent.contex-agent--font-comfortaa select {
+  font-family: var(--mindo-font-family) !important;
+}
+
+.contex-agent:not(.contex-agent--font-obsidian) .markdown-rendered,
+.contex-agent.contex-agent--font-comfortaa .markdown-rendered,
+.contex-agent:not(.contex-agent--font-obsidian) .markdown-preview-view,
+.contex-agent.contex-agent--font-comfortaa .markdown-preview-view,
+.contex-agent:not(.contex-agent--font-obsidian) .contex-agent__message-content,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__message-content,
+.contex-agent:not(.contex-agent--font-obsidian) .contex-agent__message-content p,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__message-content p,
+.contex-agent:not(.contex-agent--font-obsidian) .contex-agent__input::placeholder,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__input::placeholder {
+  font-family: var(--mindo-font-family) !important;
+}
+
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-button,
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-label,
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa .contex-agent__input,
+.workspace-leaf-content[data-type="contex-agent-view"] .contex-agent.contex-agent--font-comfortaa .contex-agent__input::placeholder,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-button,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__chat-menu-label,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__input,
+.contex-agent.contex-agent--font-comfortaa .contex-agent__input::placeholder {
+  font-family: var(--mindo-font-family) !important;
+}
+
+.contex-agent.contex-agent--font-obsidian,
+.contex-agent.contex-agent--font-obsidian button,
+.contex-agent.contex-agent--font-obsidian input,
+.contex-agent.contex-agent--font-obsidian textarea,
+.contex-agent.contex-agent--font-obsidian select,
+.contex-agent.contex-agent--font-obsidian .markdown-rendered,
+.contex-agent.contex-agent--font-obsidian .markdown-preview-view,
+.contex-agent.contex-agent--font-obsidian .contex-agent__message-content,
+.contex-agent.contex-agent--font-obsidian .contex-agent__message-content p,
+.contex-agent.contex-agent--font-obsidian .contex-agent__input::placeholder {
+  font-family: var(--font-interface) !important;
 }
 
 .contex-agent__header {
@@ -12,11 +85,36 @@
   flex: 0 0 auto;
   flex-direction: column;
   gap: var(--size-2-2);
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0;
+  border-bottom: 0;
   transition:
     padding 160ms ease,
     opacity 160ms ease;
+}
+
+.contex-agent__top-brand {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  gap: 8px;
+  padding: 0 2px;
+  color: var(--text-normal);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.contex-agent__top-brand-logo {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.18));
+}
+
+.contex-agent__top-brand-text {
+  line-height: 1;
 }
 
 .contex-agent__header-top {
@@ -93,6 +191,10 @@ body.theme-dark .contex-agent__logo--dark {
   min-height: 0;
 }
 
+.contex-agent__hidden {
+  display: none !important;
+}
+
 .contex-agent__meta > :not(.contex-agent__error) {
   display: none;
 }
@@ -139,27 +241,16 @@ body.theme-dark .contex-agent__logo--dark {
   overflow-wrap: anywhere;
 }
 
-.contex-agent--has-chat .contex-agent__header {
-  padding-bottom: 8px;
-}
-
-.contex-agent--has-chat .contex-agent__header-top {
-  min-height: 34px;
-}
-
-.contex-agent--has-chat .contex-agent__logo {
-  max-width: min(180px, 54%);
-  max-height: 26px;
-  opacity: 0.86;
-}
-
 .contex-agent__live-surface {
   display: none;
   flex: 1 1 auto;
   flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
   min-height: 0;
-  padding: 14px 0 18px;
-  border-top: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+  padding: 12px 6px 14px;
+  border-top: 0;
 }
 
 .contex-agent.is-live-dialogue-surface-active .contex-agent__suggestions,
@@ -169,7 +260,7 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent.is-live-dialogue-surface-active .contex-agent__header {
-  padding-bottom: 10px;
+  padding-bottom: 0;
 }
 
 .contex-agent.is-live-dialogue-surface-active .contex-agent__live-surface {
@@ -178,35 +269,108 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__live-transcript {
   display: flex;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 8px;
-  min-height: 96px;
-  max-height: 30%;
-  padding: 10px;
+  gap: 10px;
+  align-self: stretch;
+  width: min(560px, 100%);
+  min-height: 0;
+  margin: 0 auto;
+  padding: 2px 8px 20px;
   overflow-y: auto;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: rgba(0, 0, 0, 0.08);
+  scroll-padding-bottom: 20px;
+  scrollbar-gutter: stable;
+  border: 0;
+  background: transparent;
 }
 
 .contex-agent__live-transcript-item {
-  max-width: 92%;
-  padding: 7px 9px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
-  color: var(--text-normal);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-width: min(460px, 94%);
+  padding: 0;
+  border: 0;
+  background: transparent;
   box-shadow: none;
+  color: #16131c;
+}
+
+.contex-agent__live-transcript-bubble {
+  min-width: 0;
+  padding: 10px 13px;
+  border: 2px solid var(--mindo-ink);
+  border-radius: 24px 28px 24px 20px;
+  background: #fbf8ff;
+  box-shadow: 4px 6px 0 rgba(17, 16, 24, 0.2);
+}
+
+.contex-agent__live-transcript-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 4px;
+  border: 1.5px solid var(--mindo-ink);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mindo-accent) 22%, #fbf8ff);
+  color: var(--mindo-accent);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 2px 3px 0 rgba(17, 16, 24, 0.16);
+}
+
+.contex-agent__live-transcript-avatar-logo {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .contex-agent__live-transcript-item--user {
   align-self: flex-end;
-  background: var(--background-modifier-hover);
+  justify-content: flex-end;
+  max-width: min(390px, 84%);
+}
+
+.contex-agent__live-transcript-item--user .contex-agent__live-transcript-bubble {
+  border-width: 1.5px;
+  border-radius: 18px 20px 18px 20px;
+  background: color-mix(in srgb, var(--mindo-accent) 14%, #fbf8ff);
+  box-shadow: 3px 4px 0 rgba(17, 16, 24, 0.14);
+}
+
+.contex-agent__live-transcript-item--assistant {
+  align-self: flex-start;
+}
+
+.contex-agent__live-transcript-item--question .contex-agent__live-transcript-bubble {
+  background: color-mix(in srgb, var(--mindo-accent) 10%, #fbf8ff);
+}
+
+.contex-agent__live-transcript-item--status {
+  justify-content: center;
+  align-self: center;
+  max-width: min(360px, 88%);
+}
+
+.contex-agent__live-transcript-item--status .contex-agent__live-transcript-avatar {
+  display: none;
+}
+
+.contex-agent__live-transcript-item--status .contex-agent__live-transcript-bubble {
+  border-width: 1.5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mindo-accent) 9%, var(--background-secondary));
+  box-shadow: none;
 }
 
 .contex-agent__live-transcript-role {
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--mindo-accent) 70%, #16131c);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   line-height: 1.2;
@@ -220,14 +384,33 @@ body.theme-dark .contex-agent__logo--dark {
   white-space: pre-wrap;
 }
 
+.contex-agent__live-transcript-text.markdown-rendered {
+  color: #16131c !important;
+  white-space: normal;
+}
+
+.contex-agent__live-transcript-text.markdown-rendered :is(p, li, strong, em, span, div, h1, h2, h3, h4, h5, h6, blockquote, code) {
+  color: #16131c !important;
+}
+
+.contex-agent__live-transcript-text > :first-child {
+  margin-top: 0;
+}
+
+.contex-agent__live-transcript-text > :last-child {
+  margin-bottom: 0;
+}
+
 .contex-agent__live-orb-wrap {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   min-height: 0;
-  gap: 16px;
+  margin-top: auto;
+  gap: 6px;
+  padding-bottom: 2px;
 }
 
 .contex-agent__live-orb {
@@ -236,20 +419,13 @@ body.theme-dark .contex-agent__logo--dark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 148px;
+  width: min(210px, 58vw);
   height: 148px;
   padding: 0;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 999px;
-  background:
-    radial-gradient(
-      circle at 50% 40%,
-      rgba(var(--color-accent-rgb), 0.18),
-      var(--background-primary) 62%
-    );
-  box-shadow:
-    0 0 0 9px rgba(var(--color-accent-rgb), var(--contex-live-glow)),
-    0 18px 42px rgba(0, 0, 0, 0.24);
+  border: 0 !important;
+  border-radius: 28px;
+  background: transparent !important;
+  box-shadow: 0 0 0 9px rgba(var(--color-accent-rgb), var(--contex-live-glow)) !important;
   color: var(--text-normal);
   transform: scale(var(--contex-live-scale));
   transition:
@@ -260,33 +436,42 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__live-orb:hover,
 .contex-agent__live-orb:focus {
-  background:
-    radial-gradient(
-      circle at 50% 40%,
-      rgba(var(--color-accent-rgb), 0.24),
-      var(--background-primary) 62%
-    );
+  background: transparent;
+  filter: brightness(1.04);
 }
 
-.contex-agent__live-orb-icon,
-.contex-agent__live-orb svg {
-  width: 54px;
-  height: 54px;
+.contex-agent button.contex-agent__live-orb,
+.contex-agent button.contex-agent__live-orb:hover,
+.contex-agent button.contex-agent__live-orb:focus {
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+
+.contex-agent__live-orb-logo {
+  display: block;
+  width: min(190px, 52vw);
+  max-height: 138px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.22));
 }
 
 .contex-agent__live-phase {
-  color: var(--text-muted);
-  font-size: 13px;
+  min-height: 24px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--mindo-accent) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mindo-accent) 11%, transparent);
+  color: color-mix(in srgb, var(--mindo-accent) 72%, var(--text-muted));
+  font-size: 12px;
   font-weight: var(--font-semibold);
   letter-spacing: 0;
 }
 
 .contex-agent.is-live-dialogue-listening .contex-agent__live-orb {
-  border-color: rgba(var(--color-accent-rgb), 0.48);
   box-shadow:
     0 0 0 10px rgba(var(--color-accent-rgb), var(--contex-live-glow)),
-    0 0 0 1px rgba(var(--color-accent-rgb), 0.18),
-    0 18px 42px rgba(0, 0, 0, 0.24);
+    0 0 0 1px rgba(var(--color-accent-rgb), 0.18);
 }
 
 .contex-agent.is-live-dialogue-listening .contex-agent__live-phase::before {
@@ -325,15 +510,11 @@ body.theme-dark .contex-agent__logo--dark {
   0%,
   100% {
     transform: scale(1);
-    box-shadow:
-      0 0 0 8px rgba(var(--color-accent-rgb), 0.08),
-      0 18px 42px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 0 0 8px rgba(var(--color-accent-rgb), 0.08);
   }
   50% {
     transform: scale(1.07);
-    box-shadow:
-      0 0 0 14px rgba(var(--color-accent-rgb), 0.16),
-      0 18px 42px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 0 0 14px rgba(var(--color-accent-rgb), 0.16);
   }
 }
 
@@ -341,10 +522,11 @@ body.theme-dark .contex-agent__logo--dark {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 10px;
   min-height: 0;
-  padding: 18px 0;
+  padding: 18px 0 28px;
   overflow-y: auto;
 }
 
@@ -357,6 +539,44 @@ body.theme-dark .contex-agent__logo--dark {
   font-size: 13px;
   font-weight: var(--font-semibold);
   letter-spacing: 0;
+}
+
+.contex-agent__home-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(420px, 88%);
+  gap: 0;
+  transform: translateY(clamp(-36px, -4vh, -18px));
+}
+
+.contex-agent__home-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0;
+  line-height: 0;
+}
+
+.contex-agent__home-logo {
+  display: block;
+  width: min(290px, 82%);
+  max-height: min(28vh, 260px);
+  object-fit: contain;
+  opacity: 0.98;
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.14));
+}
+
+.contex-agent__home-greeting {
+  max-width: min(360px, 86%);
+  margin-top: clamp(-36px, -4vw, -24px);
+  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .contex-agent__suggestion-cards {
@@ -489,10 +709,13 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent__chat {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
   min-height: 180px;
   overflow-y: auto;
-  padding: var(--size-2-2) 0;
+  padding: 8px 4px 14px;
 }
 
 .contex-agent__chat:empty {
@@ -500,12 +723,16 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent__message {
-  margin-bottom: 12px;
-  padding: 4px 2px 10px 10px;
-  border: 0;
-  border-left: 1px solid var(--background-modifier-border);
-  border-radius: 0;
-  background: transparent;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: min(520px, 92%);
+  margin: 0;
+  padding: 10px 13px;
+  border: 2px solid var(--mindo-ink);
+  border-radius: 24px 28px 24px 20px;
+  background: #fbf8ff;
+  box-shadow: 4px 6px 0 rgba(17, 16, 24, 0.2);
+  color: #16131c;
 }
 
 .contex-agent__message-header {
@@ -513,26 +740,29 @@ body.theme-dark .contex-agent__logo--dark {
   align-items: center;
   justify-content: space-between;
   gap: var(--size-4-2);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .contex-agent__message-role {
-  color: var(--text-muted);
-  font-size: 11px;
+  color: color-mix(in srgb, var(--mindo-accent) 70%, #16131c);
+  font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
-  text-transform: uppercase;
+  line-height: 1.2;
+  text-transform: none;
 }
 
 .contex-agent__message--assistant .contex-agent__message-role {
-  color: var(--text-faint);
+  color: color-mix(in srgb, var(--mindo-accent) 70%, #16131c);
 }
 
 .contex-agent__message--user {
-  margin-left: 8px;
-  padding: 9px 11px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
+  align-self: flex-end;
+  max-width: min(430px, 84%);
+  margin-left: auto;
+  border-width: 1.5px;
+  border-radius: 18px 20px 18px 20px;
+  background: color-mix(in srgb, var(--mindo-accent) 14%, #fbf8ff);
+  box-shadow: 3px 4px 0 rgba(17, 16, 24, 0.14);
 }
 
 .contex-agent__message--receipt {
@@ -540,6 +770,8 @@ body.theme-dark .contex-agent__logo--dark {
   padding: 0;
   border: 0;
   background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
 }
 
 .contex-agent__message--receipt .contex-agent__message-header {
@@ -551,10 +783,12 @@ body.theme-dark .contex-agent__logo--dark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-color: transparent;
+  border-radius: 8px;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
@@ -562,8 +796,8 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__message-action svg,
 .contex-agent__icon-button svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .contex-agent__icon-button--ghost:disabled {
@@ -575,24 +809,42 @@ body.theme-dark .contex-agent__logo--dark {
   color: var(--text-error);
 }
 
-.contex-agent__live-dialogue-button svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 2.2;
+.contex-agent__live-dialogue-logo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.16));
+}
+
+.contex-agent button.contex-agent__live-dialogue-button {
+  overflow: visible;
 }
 
 .contex-agent__live-dialogue-button.is-live-dialogue-active {
   color: var(--interactive-accent);
 }
 
+.contex-agent__live-dialogue-button.is-live-dialogue-active .contex-agent__live-dialogue-logo {
+  filter:
+    drop-shadow(0 0 7px color-mix(in srgb, var(--mindo-accent) 58%, transparent))
+    drop-shadow(0 4px 6px rgba(0, 0, 0, 0.16));
+}
+
 .contex-agent__message-content {
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
+  color: #16131c;
+  font-size: 14px;
   line-height: 1.45;
   overflow-wrap: anywhere;
   cursor: text;
   user-select: text;
   -webkit-user-select: text;
+}
+
+.contex-agent__message-content.markdown-rendered,
+.contex-agent__message-content.markdown-rendered :is(p, li, strong, em, span, div, h1, h2, h3, h4, h5, h6, blockquote, code) {
+  color: #16131c !important;
 }
 
 .contex-agent__message-content--plain {
@@ -663,6 +915,31 @@ body.theme-dark .contex-agent__logo--dark {
   font-size: var(--font-ui-smallest);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.contex-agent__quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.contex-agent__quick-reply {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 78%, transparent);
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+}
+
+.contex-agent__quick-reply:hover {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-secondary));
+  color: var(--text-normal);
 }
 
 .contex-agent__action-receipt {
@@ -915,7 +1192,7 @@ body.theme-dark .contex-agent__logo--dark {
   background: var(--background-primary);
   box-shadow: var(--shadow-s);
   color: var(--text-normal);
-  font-family: var(--font-interface);
+  font-family: inherit;
   font-size: var(--font-ui-smaller);
   user-select: text;
   -webkit-user-select: text;
@@ -1257,8 +1534,9 @@ body.theme-dark .contex-agent__logo--dark {
   flex: 0 0 auto;
   flex-direction: column;
   gap: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
+  margin: 0 -2px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
 }
 
 .contex-agent__chat-switcher {
@@ -1266,6 +1544,12 @@ body.theme-dark .contex-agent__logo--dark {
   align-items: center;
   gap: 4px;
   min-height: 28px;
+}
+
+.contex-agent__hover-action-picker {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
 }
 
 .contex-agent__chat-picker {
@@ -1305,17 +1589,17 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent__chat-menu {
   position: absolute;
   left: 0;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 3px);
   z-index: var(--layer-popover);
   min-width: 160px;
   max-width: 280px;
   max-height: 220px;
   padding: 4px;
   overflow: auto;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
-  box-shadow: var(--shadow-s);
+  border: 1px solid var(--mindo-drawn-border);
+  border-radius: 7px;
+  background: var(--mindo-menu-bg);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
 }
 
 .contex-agent__chat-menu-item {
@@ -1336,9 +1620,15 @@ body.theme-dark .contex-agent__logo--dark {
 }
 
 .contex-agent__chat-menu-item:hover,
-.contex-agent__chat-menu-item:focus,
+.contex-agent__chat-menu-item:focus {
+  background: color-mix(in srgb, var(--mindo-accent) 16%, transparent);
+  color: #f4f1ff;
+  box-shadow: none;
+}
+
 .contex-agent__chat-menu-item.is-active {
-  background: var(--background-modifier-hover);
+  background: transparent;
+  color: var(--mindo-accent);
   box-shadow: none;
 }
 
@@ -1452,10 +1742,10 @@ body.theme-dark .contex-agent__logo--dark {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 118px;
-  padding: 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
+  min-height: 112px;
+  padding: 10px 11px 9px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
+  border-radius: 7px;
   background: var(--background-primary);
 }
 
@@ -1516,30 +1806,43 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent__actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .contex-agent__actions-spacer {
-  flex: 1 1 auto;
+  flex: 1 1 18px;
+  min-width: 8px;
+}
+
+.contex-agent__model-picker {
+  position: relative;
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .contex-agent__model-button {
   display: inline-flex;
   align-items: center;
-  max-width: min(210px, 54%);
+  flex: 0 1 auto;
+  max-width: min(138px, 34vw);
+  height: 28px;
   min-height: 28px;
   gap: 5px;
-  padding: 2px 9px;
-  border: 1px solid var(--background-modifier-border);
+  padding: 0 8px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   box-shadow: none;
   color: var(--text-normal);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 650;
   overflow: hidden;
 }
 
 .contex-agent__model-button:hover,
+.contex-agent__model-picker:focus-within .contex-agent__model-button,
 .contex-agent__header-icon:hover,
 .contex-agent__chat-switcher .contex-agent__icon-button:hover {
   background: var(--background-modifier-hover);
@@ -1551,7 +1854,93 @@ body.theme-dark .contex-agent__logo--dark {
   height: 6px;
   border-radius: 999px;
   background: var(--text-success);
-  opacity: 0.78;
+  opacity: 0.82;
+}
+
+.contex-agent__context-meter {
+  --contex-context-fill: 0deg;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 28px;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contex-agent--home .contex-agent__context-meter {
+  display: none;
+}
+
+.contex-agent__context-meter:hover,
+.contex-agent__context-meter:focus {
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+.contex-agent__context-meter-arc {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 9px;
+  overflow: hidden;
+}
+
+.contex-agent__context-meter-arc::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px 18px 0 0;
+  background:
+    conic-gradient(
+      from 270deg at 50% 100%,
+      var(--interactive-accent) 0deg var(--contex-context-fill),
+      color-mix(in srgb, var(--text-muted) 22%, transparent) var(--contex-context-fill) 180deg,
+      transparent 180deg 360deg
+    );
+}
+
+.contex-agent__context-meter-arc::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 0;
+  height: 6px;
+  border-radius: 12px 12px 0 0;
+  background: var(--background-primary);
+}
+
+.contex-agent__context-meter.is-warn .contex-agent__context-meter-arc::before {
+  background:
+    conic-gradient(
+      from 270deg at 50% 100%,
+      var(--text-warning) 0deg var(--contex-context-fill),
+      color-mix(in srgb, var(--text-muted) 22%, transparent) var(--contex-context-fill) 180deg,
+      transparent 180deg 360deg
+    );
+}
+
+.contex-agent__context-meter.is-high .contex-agent__context-meter-arc::before {
+  background:
+    conic-gradient(
+      from 270deg at 50% 100%,
+      var(--text-error) 0deg var(--contex-context-fill),
+      color-mix(in srgb, var(--text-muted) 22%, transparent) var(--contex-context-fill) 180deg,
+      transparent 180deg 360deg
+    );
+}
+
+.contex-agent__context-meter-value {
+  min-width: 30px;
+  text-align: left;
 }
 
 .contex-agent__prompt-box .contex-agent__icon-button {
@@ -1650,11 +2039,59 @@ body.theme-dark .contex-agent__logo--dark {
   opacity: 0.72;
 }
 
-.contex-agent__prompt-box.is-recording .contex-agent__model-button,
-.contex-agent__prompt-box.is-recording .contex-agent__model-profile-manage,
+.contex-agent__prompt-box.is-recording .contex-agent__model-picker,
 .contex-agent__prompt-box.is-recording .contex-agent__actions-spacer,
+.contex-agent__prompt-box.is-recording .contex-agent__context-meter,
+.contex-agent__prompt-box.is-recording .contex-agent__auto-apply-toggle,
 .contex-agent__prompt-box.is-recording .contex-agent__icon-button--ghost {
   display: none;
+}
+
+.contex-agent__auto-apply-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 28px;
+  gap: 6px;
+  padding: 0 4px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, transparent);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.contex-agent__auto-apply-toggle:hover,
+.contex-agent__auto-apply-toggle:focus {
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+.contex-agent__auto-apply-toggle.is-active {
+  border-color: color-mix(in srgb, var(--mindo-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent);
+  color: #f4f1ff;
+}
+
+.contex-agent__auto-apply-knob {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  opacity: 0.58;
+  transition:
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.contex-agent__auto-apply-toggle.is-active .contex-agent__auto-apply-knob {
+  background: var(--mindo-accent);
+  opacity: 1;
 }
 
 .contex-agent__send-button {
@@ -1707,52 +2144,132 @@ body.theme-dark .contex-agent__logo--dark {
 
 .contex-agent__model-menu {
   position: absolute;
-  left: 10px;
-  bottom: 44px;
+  left: 0;
+  bottom: calc(100% + 3px);
   z-index: var(--layer-popover);
   box-sizing: border-box;
-  width: min(260px, calc(100% - 20px));
-  max-height: min(176px, 28vh);
-  padding: 3px;
+  min-width: 108px;
+  width: max-content;
+  max-width: min(210px, 70vw);
+  max-height: min(178px, 28vh);
+  padding: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: var(--background-primary);
-  box-shadow: var(--shadow-s);
+  border: 1px solid var(--mindo-drawn-border);
+  border-radius: 7px;
+  background: var(--mindo-menu-bg);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
 }
 
 .contex-agent__model-menu-item {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  min-height: 30px;
+  min-height: 28px;
   margin: 0;
-  padding: 4px 7px;
+  padding: 4px 8px;
   border: 0;
-  border-radius: 5px;
-  background: transparent;
-  box-shadow: none;
+  border-radius: 6px;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
   text-align: left;
   line-height: 1.15;
 }
 
 .contex-agent__model-menu-item:hover,
-.contex-agent__model-menu-item:focus,
+.contex-agent__model-menu-item:focus {
+  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
+  color: #f4f1ff;
+  box-shadow: none;
+}
+
 .contex-agent__model-menu-item.is-active {
-  background: var(--background-modifier-hover);
+  background: transparent !important;
+  color: var(--mindo-accent);
   box-shadow: none;
 }
 
 .contex-agent__model-menu-item-name {
   max-width: 100%;
-  color: var(--text-normal);
+  color: inherit;
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.contex-agent__action-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 3px);
+  z-index: var(--layer-popover);
+  box-sizing: border-box;
+  min-width: 160px;
+  width: max-content;
+  max-width: min(260px, 74vw);
+  max-height: min(220px, 34vh);
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--mindo-drawn-border);
+  border-radius: 7px;
+  background: var(--mindo-menu-bg);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+}
+
+.contex-agent__action-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-muted);
+  text-align: left;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.contex-agent__action-menu-item-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  color: inherit;
+  opacity: 0.86;
+}
+
+.contex-agent__action-menu-item-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.1;
+}
+
+.contex-agent__action-menu-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contex-agent__action-menu-item:hover,
+.contex-agent__action-menu-item:focus {
+  background: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
+  color: #f4f1ff;
+  box-shadow: none;
 }
 
 .contex-history-modal {
@@ -2011,6 +2528,8 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__header-icon,
 .contex-agent button.contex-agent__icon-button,
 .contex-agent__prompt-box button.mod-cta,
+.contex-agent button.contex-agent__model-menu-item,
+.contex-agent button.contex-agent__action-menu-item,
 .contex-agent button.contex-agent__chat-menu-button,
 .contex-agent button.contex-agent__chat-menu-item {
   border-color: transparent !important;
@@ -2024,11 +2543,14 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__icon-button:focus,
 .contex-agent__prompt-box button.mod-cta:hover,
 .contex-agent__prompt-box button.mod-cta:focus,
+.contex-agent button.contex-agent__model-menu-item:hover,
+.contex-agent button.contex-agent__model-menu-item:focus,
+.contex-agent button.contex-agent__action-menu-item:hover,
+.contex-agent button.contex-agent__action-menu-item:focus,
 .contex-agent button.contex-agent__chat-menu-button:hover,
 .contex-agent button.contex-agent__chat-menu-button:focus,
 .contex-agent button.contex-agent__chat-menu-item:hover,
-.contex-agent button.contex-agent__chat-menu-item:focus,
-.contex-agent button.contex-agent__chat-menu-item.is-active {
+.contex-agent button.contex-agent__chat-menu-item:focus {
   border-color: transparent !important;
   background-color: var(--background-modifier-hover) !important;
   box-shadow: none !important;
@@ -2037,6 +2559,30 @@ body.theme-dark .contex-agent__logo--dark {
 .contex-agent button.contex-agent__icon-button:disabled:hover,
 .contex-agent button.contex-agent__icon-button:disabled:focus {
   background-color: transparent !important;
+}
+
+.contex-agent button.contex-agent__model-menu-item:hover,
+.contex-agent button.contex-agent__model-menu-item:focus,
+.contex-agent button.contex-agent__action-menu-item:hover,
+.contex-agent button.contex-agent__action-menu-item:focus {
+  background-color: color-mix(in srgb, var(--mindo-accent) 18%, transparent) !important;
+  color: #f4f1ff !important;
+}
+
+.contex-agent button.contex-agent__model-menu-item.is-active {
+  background-color: transparent !important;
+  color: var(--mindo-accent) !important;
+}
+
+.contex-agent button.contex-agent__chat-menu-item:hover,
+.contex-agent button.contex-agent__chat-menu-item:focus {
+  background-color: color-mix(in srgb, var(--mindo-accent) 16%, transparent) !important;
+  color: #f4f1ff !important;
+}
+
+.contex-agent button.contex-agent__chat-menu-item.is-active {
+  background-color: transparent !important;
+  color: var(--mindo-accent) !important;
 }
 
 .contex-agent__prompt-box,

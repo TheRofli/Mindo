@@ -18,9 +18,9 @@ export interface ContexScenarioResult {
   receipts: ContexActionReceipt[];
 }
 
-export async function runContexScenario(
+export function runContexScenario(
   input: ContexScenarioInput
-): Promise<ContexScenarioResult> {
+): ContexScenarioResult {
   const commands = parseToolRouterResponse(JSON.stringify(input.routerResponse));
   const plan = routerCommandsToActionPlan({
     source: "chat",

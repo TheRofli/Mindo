@@ -69,7 +69,7 @@ assert.deepEqual(
 );
 
 const markdown = buildWikiMaintenanceMarkdown(report);
-assert.ok(markdown.includes("# Contex Wiki Maintenance"));
+assert.ok(markdown.includes("# Mindo Wiki Maintenance"));
 assert.ok(markdown.includes("Duplicate aliases"));
 assert.ok(markdown.includes("Missing/Note.md"));
 assert.ok(markdown.includes("concept-private-ai"));

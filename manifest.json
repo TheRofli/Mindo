@@ -1,9 +1,9 @@
 {
   "id": "contex-agent",
-  "name": "Contex Agent",
+  "name": "Mindo",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Contex Code.",
-  "author": "Contex",
+  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Mindo Code.",
+  "author": "Mindo",
   "isDesktopOnly": true
 }

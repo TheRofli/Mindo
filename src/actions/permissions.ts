@@ -30,7 +30,7 @@ export function classifyActionPermission(
   if (IMMEDIATE_ACTIONS.has(action.kind)) {
     return {
       mode: "immediate",
-      reason: `${action.kind} is a non-destructive Contex action.`
+      reason: `${action.kind} is a non-destructive Mindo action.`
     };
   }
 

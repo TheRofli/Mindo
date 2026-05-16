@@ -5,6 +5,7 @@ export type UiTextKey =
   | "activeNote"
   | "noActiveNote"
   | "suggestedPrompts"
+  | "homeGreeting"
   | "composerPlaceholder"
   | "checkHealth"
   | "modelProfiles"
@@ -45,13 +46,14 @@ export interface LocalizedActionText {
 
 const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
   en: {
-    appName: "Contex",
+    appName: "Mindo",
     activeNote: "Active note",
     noActiveNote: "No active Markdown note found.",
     suggestedPrompts: "Suggested Prompts",
+    homeGreeting: "Hi, what should we explore today?",
     composerPlaceholder:
       "Your AI assistant for Obsidian • @ to add context • / for custom prompts",
-    checkHealth: "Check Contex health",
+    checkHealth: "Check Mindo health",
     modelProfiles: "Model profiles",
     manageModelProfiles: "Manage model profiles",
     attachFiles: "Attach files",
@@ -65,7 +67,7 @@ const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
     switchChat: "Switch chat",
     clearCurrentChat: "Clear current chat",
     changeHistory: "AI change history",
-    contexCode: "Contex Code",
+    contexCode: "Mindo Code",
     moreActions: "More actions",
     turnChatIntoNote: "Turn chat into note",
     researchWeb: "Research web",
@@ -78,18 +80,19 @@ const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
     syncCodePlan: "Sync Code Plan",
     profile: "Profile",
     interfaceLanguage: "Interface Language",
-    interfaceLanguageDesc: "Language used by Contex sidebar and main controls.",
+    interfaceLanguageDesc: "Language used by Mindo sidebar and main controls.",
     english: "English",
     russian: "Russian"
   },
   ru: {
-    appName: "Contex",
+    appName: "Mindo",
     activeNote: "Активная заметка",
     noActiveNote: "Активная Markdown-заметка не найдена.",
     suggestedPrompts: "Предложенные команды",
+    homeGreeting: "\u041f\u0440\u0438\u0432\u0435\u0442. \u0427\u0442\u043e \u043d\u0430\u0439\u0434\u0451\u043c \u0438\u043b\u0438 \u043e\u0431\u0441\u0443\u0434\u0438\u043c?",
     composerPlaceholder:
       "Ваш AI-ассистент для Obsidian • контекст подключается автоматически • / для команд",
-    checkHealth: "Проверить состояние Contex",
+    checkHealth: "Проверить состояние Mindo",
     modelProfiles: "Профили моделей",
     manageModelProfiles: "Управлять профилями моделей",
     attachFiles: "Прикрепить файлы",
@@ -103,7 +106,7 @@ const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
     switchChat: "Переключить чат",
     clearCurrentChat: "Очистить текущий чат",
     changeHistory: "История AI-изменений",
-    contexCode: "Contex Code",
+    contexCode: "Mindo Code",
     moreActions: "Ещё",
     turnChatIntoNote: "Сохранить чат как заметку",
     researchWeb: "Поиск в интернете",
@@ -116,7 +119,7 @@ const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
     syncCodePlan: "Синхронизировать Code Plan",
     profile: "Профиль",
     interfaceLanguage: "Язык интерфейса",
-    interfaceLanguageDesc: "Язык сайдбара Contex и основных элементов.",
+    interfaceLanguageDesc: "Язык сайдбара Mindo и основных элементов.",
     english: "Английский",
     russian: "Русский"
   }

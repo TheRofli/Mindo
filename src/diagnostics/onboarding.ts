@@ -36,7 +36,7 @@ export function buildOnboardingChecklist(
       byId.get("active-note"),
       "active-note",
       "Open a Markdown note",
-      "Open any Markdown note so Contex can ground actions in the active file.",
+      "Open any Markdown note so Mindo can ground actions in the active file.",
       false
     ),
     buildStep(
@@ -79,11 +79,11 @@ export function formatOnboardingChecklist(
   checklist: OnboardingChecklist
 ): string {
   return [
-    "# Contex onboarding",
+    "# Mindo onboarding",
     "",
     checklist.isReady
       ? "Core setup is ready."
-      : "Finish the open items below to make Contex reliable.",
+      : "Finish the open items below to make Mindo reliable.",
     "",
     ...checklist.steps.map((step) => {
       const marker = step.status === "done" ? "x" : " ";

@@ -1,4 +1,4 @@
-import type { App, TFile } from "obsidian";
+import { normalizePath, type App, type TFile } from "obsidian";
 import type { VaultSearchResult } from "../types";
 import {
   buildVectorRagIndexFromDocuments,
@@ -125,7 +125,7 @@ async function getVectorVaultIndex(
 function getSearchableMarkdownFiles(app: App): TFile[] {
   return app.vault
     .getMarkdownFiles()
-    .filter((file) => !isIgnoredPath(file.path));
+    .filter((file) => !isIgnoredPath(file.path, app.vault.configDir));
 }
 
 function buildVaultSignature(files: TFile[]): string {
@@ -165,12 +165,17 @@ function getFileSignature(file: TFile): string {
   return `${file.path}:${file.stat.mtime}:${file.stat.size}:${file.basename}`;
 }
 
-function isIgnoredPath(path: string): boolean {
-  const lowerPath = path.toLowerCase();
+function isIgnoredPath(path: string, configDir: string): boolean {
+  const lowerPath = normalizePath(path).toLowerCase();
+  const lowerConfigDir = normalizePath(configDir).toLowerCase();
 
   return (
-    lowerPath.startsWith(".obsidian/") ||
+    isPathOrChild(lowerPath, lowerConfigDir) ||
     lowerPath.startsWith(".git/") ||
     lowerPath.startsWith(".contex-history/")
   );
+}
+
+function isPathOrChild(path: string, parentPath: string): boolean {
+  return path === parentPath || path.startsWith(`${parentPath}/`);
 }

@@ -70,7 +70,7 @@ export function planSmartNoteCreation(
     inferPersonalStyleMemory([input.userText, input.titleHint ?? ""]);
   const title = inferTitle(input.userText, input.titleHint);
   const folder = normalizeFolder(
-    input.folderHint || getFolderPath(input.activeNotePath ?? "") || "Contex Inbox"
+    input.folderHint || getFolderPath(input.activeNotePath ?? "") || "Mindo Inbox"
   );
   const filename = sanitizeCreateNoteFilename(`${title}.md`, `# ${title}`);
   const path = `${folder}/${filename}`;
@@ -114,7 +114,7 @@ function inferTitle(userText: string, titleHint?: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  return cleanupTitle(cleaned || "Contex Note");
+  return cleanupTitle(cleaned || "Mindo Note");
 }
 
 function cleanupTitle(value: string): string {
@@ -132,7 +132,7 @@ function normalizeFolder(value: string): string {
     .replace(/\\/g, "/")
     .replace(/^\/+|\/+$/g, "")
     .replace(/\/+/g, "/")
-    .trim() || "Contex Inbox";
+    .trim() || "Mindo Inbox";
 }
 
 function shouldRequireWeb(userText: string): boolean {

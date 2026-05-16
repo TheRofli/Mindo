@@ -58,10 +58,18 @@ const created = await createContexCodePlanFromActiveNote(app);
 assert.equal(created.status, "saved");
 assert.equal(created.path, activeFile.path);
 assert.match(await adapter.read(activeFile.path), /\[!contex-code\]/);
+assert.equal(created.plan.designSpecPath, "Projects/Context Code - design.md");
+assert.ok(created.plan.fullPlanPath);
+const createdDesignSpecPath = created.plan.designSpecPath;
+const createdFullPlanPath = created.plan.fullPlanPath;
+assert.ok(createdDesignSpecPath);
+assert.ok(createdFullPlanPath);
+assert.match(await adapter.read(createdDesignSpecPath), /# Context Code - Design Spec/);
+assert.match(await adapter.read(createdFullPlanPath), /# Context Code Implementation Plan/);
 
 const packet = await prepareCurrentContexCodeTaskPacket(app);
 assert.equal(packet.status, "done");
-assert.match(packet.packet, /Contex Code Task Packet/);
+assert.match(packet.packet, /Mindo Code Task Packet/);
 
 const marked = await markCurrentContexCodeTaskDone(app);
 assert.equal(marked.status, "saved");
@@ -89,8 +97,10 @@ const liveShareApp = {
 };
 const liveSharePlan = await createContexCodePlanFromActiveNote(liveShareApp);
 assert.equal(liveSharePlan.plan.title, "LiveShare");
-assert.match(await adapter.read(liveShareFile.path), /Contex Code ·/);
-assert.match(await adapter.read(liveShareFile.path), /\*\*Project\*\* LiveShare/);
+const liveShareNote = await adapter.read(liveShareFile.path);
+assert.match(liveShareNote, /Mindo Code ·/);
+assert.match(liveShareNote, /\*\*Project\*\* LiveShare/);
+assert.match(liveShareNote, /full IDE plan/);
 
 const aiDraftFile = {
   path: "Projects/LiveShare.md",

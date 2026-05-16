@@ -36,7 +36,7 @@ export class HistoryModal extends Modal {
   }
 
   async onOpen(): Promise<void> {
-    this.setTitle("Contex AI Change History");
+    this.setTitle("Mindo AI Change History");
     await this.loadAndRender();
   }
 
@@ -130,15 +130,19 @@ export class HistoryModal extends Modal {
       const rollbackButton = actionsEl.createEl("button", {
         text: "Rollback"
       });
-      rollbackButton.addEventListener("click", async () => {
-        try {
-          await rollbackAiChangeOperation(this.app, operation.id);
-          new Notice(`Rolled back AI change in ${operation.filePath}.`);
-          await this.loadAndRender();
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+      rollbackButton.addEventListener("click", () => {
+        void this.rollbackOperation(operation);
       });
+    }
+  }
+
+  private async rollbackOperation(operation: AiChangeOperation): Promise<void> {
+    try {
+      await rollbackAiChangeOperation(this.app, operation.id);
+      new Notice(`Rolled back AI change in ${operation.filePath}.`);
+      await this.loadAndRender();
+    } catch (error) {
+      new Notice(this.getErrorMessage(error));
     }
   }
 

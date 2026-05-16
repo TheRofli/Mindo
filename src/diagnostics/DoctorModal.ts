@@ -12,7 +12,7 @@ export class DoctorModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("contex-doctor-modal");
-    contentEl.createEl("h2", { text: "Contex Doctor" });
+    contentEl.createEl("h2", { text: "Mindo Doctor" });
     contentEl.createEl("p", { text: `Overall: ${this.report.overall}` });
 
     const list = contentEl.createEl("div", { cls: "contex-doctor-checks" });
@@ -35,7 +35,7 @@ export class DoctorModal extends Modal {
     onboardingEl.createEl("p", {
       text: checklist.isReady
         ? "Core setup is ready."
-        : "Finish these items to make Contex reliable."
+        : "Finish these items to make Mindo reliable."
     });
 
     checklist.steps.forEach((step) => {

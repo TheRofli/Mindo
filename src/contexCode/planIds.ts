@@ -1,4 +1,4 @@
-const DEFAULT_PLAN_TITLE = "Contex Code Plan";
+const DEFAULT_PLAN_TITLE = "Mindo Code Plan";
 
 const RU_INSTRUCTION_WORDS = [
   "создай",
@@ -93,8 +93,8 @@ function stripSupersededOpenPart(value: string): string {
 
 function stripFolderHints(value: string): string {
   return value
-    .replace(/\b(in|inside|within)\s+(the\s+)?(current\s+)?folder\s+["'`«“]?[^\.,;!?]+["'`»”]?/giu, " ")
-    .replace(/\b(in|inside|within)\s+["'`«“]?[^\.,;!?]+\s+folder["'`»”]?/giu, " ")
+    .replace(/\b(in|inside|within)\s+(the\s+)?(current\s+)?folder\s+["'`«“]?[^.,;!?]+["'`»”]?/giu, " ")
+    .replace(/\b(in|inside|within)\s+["'`«“]?[^.,;!?]+\s+folder["'`»”]?/giu, " ")
     .replace(/(?:^|\s)в\s+(текущей|этой)\s+папке(?:\s|$)/giu, " ")
     .replace(/(?:^|\s)в\s+папк[еуи]\s+["'`«“]?[^,.;!?]+["'`»”]?/giu, " ")
     .replace(/(?:^|\s)из\s+папк[и]\s+["'`«“]?[^,.;!?]+["'`»”]?/giu, " ")

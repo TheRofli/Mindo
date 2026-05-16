@@ -1,4 +1,4 @@
-export const DEFAULT_SILERO_VOICE = "baya";
+export const DEFAULT_SILERO_VOICE = "eugene";
 
 export type SileroVoiceLanguage = "ru";
 

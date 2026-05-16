@@ -32,6 +32,9 @@ interface BlockLabels {
   map: string;
   noActiveTask: string;
   allClear: string;
+  links: string;
+  designSpec: string;
+  fullPlan: string;
 }
 
 export interface ContexCodeBlockMatch {
@@ -50,9 +53,10 @@ export function renderContexCodeBlock(
   const currentTask = getCurrentTask(plan);
   const nextTasks = getNextTasks(plan, currentTask, 3);
   const progressBar = renderProgressBar(progress.percent);
+  const artifactLinks = renderArtifactLinks(plan, labels);
 
   const phaseLines = plan.phases.flatMap((phase, index) => [
-    `> \`${formatPhaseNumber(index + 1)}\` **${compactText(phase.title, 92)}**`,
+    `> \`${formatPhaseNumber(index + 1)}\` **${compactText(getDisplayTitle(phase), 92)}**`,
     ...phase.tasks.map(
       (task) =>
         `>   - ${renderTaskMarker(task.status)} ${renderTaskTitle(task)}`
@@ -61,15 +65,16 @@ export function renderContexCodeBlock(
   ]);
 
   return [
-    `> [!contex-code]+ Contex Code ${MIDDLE_DOT} ${progress.completedTasks}/${progress.totalTasks} ${MIDDLE_DOT} ${progress.percent}%`,
+    `> [!contex-code]+ Mindo Code ${MIDDLE_DOT} ${progress.completedTasks}/${progress.totalTasks} ${MIDDLE_DOT} ${progress.percent}%`,
     `> <span class="contex-code-plan-id" data-plan-id="${escapeAttribute(plan.id)}"></span>`,
     `> **${labels.project}** ${compactText(plan.title, 92)}`,
     `> **${labels.statusLabel}** ${labels.status(plan.status)} ${MIDDLE_DOT} ${labels.handoff}`,
     `> **${labels.progress}** <span class="contex-code-progress">${progressBar} | ${progress.percent}%</span>`,
+    ...(artifactLinks ? [`> **${labels.links}** ${artifactLinks}`] : []),
     ">",
     `> **${labels.now}**`,
     currentTask
-      ? `> ${renderTaskMarker(currentTask.status)} **${compactText(currentTask.title, 110)}**`
+      ? `> ${renderTaskMarker(currentTask.status)} **${compactText(getDisplayTitle(currentTask), 110)}**`
       : `> ${labels.noActiveTask}`,
     ">",
     `> **${labels.next}**`,
@@ -240,7 +245,7 @@ function formatNextTaskLines(tasks: ContexCodeTask[], fallback: string): string[
     return [`> ${fallback}`];
   }
 
-  return tasks.map((task) => `> - ${compactText(task.title, 70)}`);
+  return tasks.map((task) => `> - ${compactText(getDisplayTitle(task), 70)}`);
 }
 
 function renderTaskMarker(status: ContexCodeTaskStatus): string {
@@ -264,8 +269,12 @@ function renderTaskMarker(status: ContexCodeTaskStatus): string {
 }
 
 function renderTaskTitle(task: ContexCodeTask): string {
-  const title = compactText(task.title, 96);
+  const title = compactText(getDisplayTitle(task), 96);
   return task.status === "in_progress" ? `**${title}**` : title;
+}
+
+function getDisplayTitle(item: { title: string; displayTitle?: string }): string {
+  return item.displayTitle?.trim() || item.title;
 }
 
 function getBlockLabels(language: ContexCodeBlockLanguage | undefined): BlockLabels {
@@ -281,7 +290,10 @@ function getBlockLabels(language: ContexCodeBlockLanguage | undefined): BlockLab
       next: "\u0414\u0430\u043b\u044c\u0448\u0435",
       map: "\u041f\u043b\u0430\u043d",
       noActiveTask: "\u043d\u0435\u0442 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0437\u0430\u0434\u0430\u0447\u0438",
-      allClear: "\u043e\u0447\u0435\u0440\u0435\u0434\u044c \u043f\u0443\u0441\u0442\u0430"
+      allClear: "\u043e\u0447\u0435\u0440\u0435\u0434\u044c \u043f\u0443\u0441\u0442\u0430",
+      links: "\u0424\u0430\u0439\u043b\u044b",
+      designSpec: "\u0434\u0438\u0437\u0430\u0439\u043d-spec",
+      fullPlan: "\u043f\u043e\u043b\u043d\u044b\u0439 IDE-\u043f\u043b\u0430\u043d"
     };
   }
 
@@ -296,7 +308,10 @@ function getBlockLabels(language: ContexCodeBlockLanguage | undefined): BlockLab
     next: "Next",
     map: "Plan",
     noActiveTask: "no active task",
-    allClear: "all clear"
+    allClear: "all clear",
+    links: "Files",
+    designSpec: "design spec",
+    fullPlan: "full IDE plan"
   };
 }
 
@@ -330,4 +345,18 @@ function compactText(value: string, maxLength: number): string {
   }
 
   return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}${ELLIPSIS}`;
+}
+
+function renderArtifactLinks(plan: ContexCodePlan, labels: BlockLabels): string {
+  const links = [
+    plan.designSpecPath ? formatWikiLink(plan.designSpecPath, labels.designSpec) : "",
+    plan.fullPlanPath ? formatWikiLink(plan.fullPlanPath, labels.fullPlan) : ""
+  ].filter(Boolean);
+
+  return links.join(` ${MIDDLE_DOT} `);
+}
+
+function formatWikiLink(path: string, label: string): string {
+  const target = path.replace(/\.md$/iu, "");
+  return `[[${target}|${label}]]`;
 }

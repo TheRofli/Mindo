@@ -6,10 +6,10 @@ export function normalizeCreateNotePath(path: string): string {
     .replace(/\/+/g, "/")
     .replace(/^\/+/, "")
     .replace(/^(\.\/)+/, "");
-  const protectedSafePath = cleaned || "Contex Inbox/Contex Note.md";
+  const protectedSafePath = cleaned || "Mindo Inbox/Mindo Note.md";
   const withFolder = protectedSafePath.includes("/")
     ? protectedSafePath
-    : `Contex Inbox/${protectedSafePath}`;
+    : `Mindo Inbox/${protectedSafePath}`;
 
   return withFolder.toLowerCase().endsWith(".md")
     ? withFolder
@@ -41,7 +41,7 @@ export function sanitizeCreateNoteFilename(
     cleanupTitleCandidate(
       firstMarkdownHeading(stripHiddenTtsHints(content)) ?? undefined
     ) ??
-    "Contex Note";
+    "Mindo Note";
   const fallbackFilename = `${slugifyTitle(fallbackTitle)}.md`;
   const candidate = (filename ?? "").trim();
   const lowerCandidate = candidate.toLowerCase();
@@ -70,7 +70,7 @@ export function sanitizeCreateNoteFilename(
 
 export function inferCreateNoteTitleFromCommand(
   commandText: string,
-  fallback = "Contex Note"
+  fallback = "Mindo Note"
 ): string {
   const explicitQuotedTitle = extractQuotedTitle(commandText);
 
@@ -101,7 +101,7 @@ export function slugifyTitle(title: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  return slug || "Contex Note";
+  return slug || "Mindo Note";
 }
 
 export function getFolderPath(path: string): string {

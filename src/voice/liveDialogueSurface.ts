@@ -18,11 +18,18 @@ export interface LiveDialogueSurfaceInput {
   isSpeaking: boolean;
   latestUserText: string;
   latestAssistantText: string;
+  messages?: ChatMessage[];
+  liveInput?: string;
+  streamingMessageId?: string | null;
+  maxTranscriptItems?: number;
 }
+
+export type LiveDialogueTranscriptVariant = "message" | "question" | "status";
 
 export interface LiveDialogueTranscriptItem {
   role: "assistant" | "user";
   text: string;
+  variant: LiveDialogueTranscriptVariant;
 }
 
 export interface LiveDialogueSurfaceState {
@@ -86,25 +93,122 @@ function getLiveDialoguePhase(
 function buildLiveDialogueTranscript(
   input: LiveDialogueSurfaceInput
 ): LiveDialogueTranscriptItem[] {
+  const transcript = input.messages?.length
+    ? buildLiveDialogueTranscriptFromMessages(input)
+    : buildLegacyLiveDialogueTranscript(input);
+
+  return compactLiveDialogueTranscript(transcript).slice(
+    -(input.maxTranscriptItems ?? 8)
+  );
+}
+
+function buildLegacyLiveDialogueTranscript(
+  input: LiveDialogueSurfaceInput
+): LiveDialogueTranscriptItem[] {
   const assistantText = input.latestAssistantText.trim();
   const userText = input.latestUserText.trim();
   const transcript: LiveDialogueTranscriptItem[] = [];
 
   if (assistantText) {
-    transcript.push({
-      role: "assistant",
-      text: assistantText
-    });
+    transcript.push(createLiveDialogueTranscriptItem("assistant", assistantText));
   }
 
   if (userText) {
-    transcript.push({
-      role: "user",
-      text: userText
-    });
+    transcript.push(createLiveDialogueTranscriptItem("user", userText));
   }
 
   return transcript;
+}
+
+function buildLiveDialogueTranscriptFromMessages(
+  input: LiveDialogueSurfaceInput
+): LiveDialogueTranscriptItem[] {
+  const transcript = (input.messages ?? [])
+    .filter(
+      (message) =>
+        (message.role === "assistant" || message.role === "user") &&
+        (message.content.trim() || message.actionReceipt)
+    )
+    .map((message) =>
+      createLiveDialogueTranscriptItem(
+        message.role,
+        message.actionReceipt
+          ? buildLiveDialogueActionSpeech(message.actionReceipt)
+          : trimTextForContext(
+              stripHiddenTtsHints(message.content),
+              message.role === "assistant" ? 900 : 360
+            )
+      )
+    );
+  const liveInput = input.liveInput?.trim() ?? "";
+
+  if (input.isRecording && liveInput) {
+    transcript.push(
+      createLiveDialogueTranscriptItem(
+        "user",
+        trimTextForContext(liveInput, 260)
+      )
+    );
+  }
+
+  if (!transcript.length) {
+    return buildLegacyLiveDialogueTranscript(input);
+  }
+
+  return transcript;
+}
+
+function createLiveDialogueTranscriptItem(
+  role: "assistant" | "user",
+  text: string
+): LiveDialogueTranscriptItem {
+  return {
+    role,
+    text,
+    variant:
+      role === "assistant" && looksLikeLiveDialogueQuestion(text)
+        ? "question"
+        : "message"
+  };
+}
+
+function compactLiveDialogueTranscript(
+  transcript: LiveDialogueTranscriptItem[]
+): LiveDialogueTranscriptItem[] {
+  const compacted: LiveDialogueTranscriptItem[] = [];
+
+  for (const item of transcript) {
+    const previous = compacted.at(-1);
+
+    if (
+      previous &&
+      previous.role === item.role &&
+      normalizeLiveDialogueText(previous.text) === normalizeLiveDialogueText(item.text)
+    ) {
+      continue;
+    }
+
+    compacted.push(item);
+  }
+
+  return compacted;
+}
+
+function normalizeLiveDialogueText(text: string): string {
+  return text
+    .toLocaleLowerCase()
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function looksLikeLiveDialogueQuestion(text: string): boolean {
+  const trimmed = text.trim();
+
+  if (!trimmed || trimmed.length > 180) {
+    return false;
+  }
+
+  return /[?？]\s*$/u.test(trimmed);
 }
 
 export function getLiveDialogueLatestUserText(options: {
@@ -158,7 +262,7 @@ export function getLiveDialogueLatestAssistantText(options: {
 
   return trimTextForContext(
     stripHiddenTtsHints(latestAssistantMessage.content),
-    260
+    900
   );
 }
 

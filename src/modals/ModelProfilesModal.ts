@@ -58,7 +58,7 @@ export class ModelProfilesModal extends Modal {
       });
       bodyEl.createDiv({
         cls: "contex-model-profiles-modal__item-detail",
-        text: `${profile.model} · ${profile.baseUrl}`
+        text: `${profile.model} - ${profile.baseUrl}`
       });
 
       const actionsEl = itemEl.createDiv({
@@ -68,16 +68,13 @@ export class ModelProfilesModal extends Modal {
         text: "Use"
       });
       useButton.disabled = profile.id === this.settings.activeModelProfileId;
-      useButton.addEventListener("click", async () => {
-        this.settings = applyModelProfile(this.settings, profile);
-        await this.save();
-        this.render();
+      useButton.addEventListener("click", () => {
+        void this.useProfile(profile);
       });
 
       const editButton = actionsEl.createEl("button", {
         attr: {
           type: "button",
-          title: "Edit profile",
           "aria-label": "Edit profile"
         }
       });
@@ -90,25 +87,13 @@ export class ModelProfilesModal extends Modal {
       const deleteButton = actionsEl.createEl("button", {
         attr: {
           type: "button",
-          title: "Delete profile",
           "aria-label": "Delete profile"
         }
       });
       setIcon(deleteButton, "trash-2");
       deleteButton.disabled = this.settings.modelProfiles.length <= 1;
-      deleteButton.addEventListener("click", async () => {
-        this.settings.modelProfiles = deleteModelProfile(
-          this.settings.modelProfiles,
-          profile.id
-        );
-        if (this.settings.activeModelProfileId === profile.id) {
-          this.settings = applyModelProfile(
-            this.settings,
-            this.settings.modelProfiles[0]
-          );
-        }
-        await this.save();
-        this.render();
+      deleteButton.addEventListener("click", () => {
+        void this.deleteProfile(profile);
       });
     });
 
@@ -188,35 +173,74 @@ export class ModelProfilesModal extends Modal {
       });
       this.render();
     });
-    saveButton.addEventListener("click", async () => {
-      const parsedTemperature = Number.parseFloat(temperature);
-      const profile = createModelProfileFromSettings(
-        {
-          baseUrl,
-          apiKey,
-          model,
-          temperature: Number.isFinite(parsedTemperature)
-            ? parsedTemperature
-            : DEFAULT_SETTINGS.temperature,
-          supportsVision
-        },
-        {
-          id: this.draftProfile.id,
-          name: name || model || "Model profile"
-        }
-      );
-
-      this.settings.modelProfiles = upsertModelProfile(
-        this.settings.modelProfiles,
-        profile
-      );
-      this.settings = applyModelProfile(this.settings, profile);
-      this.draftProfile = profile;
-      await this.save();
-      new Notice(`Saved model profile: ${profile.name}`);
-      this.render();
+    saveButton.addEventListener("click", () => {
+      void this.saveDraftProfile({
+        name,
+        baseUrl,
+        apiKey,
+        model,
+        temperature,
+        supportsVision
+      });
     });
     closeButton.addEventListener("click", () => this.close());
+  }
+
+  private async useProfile(profile: LlmModelProfile): Promise<void> {
+    this.settings = applyModelProfile(this.settings, profile);
+    await this.save();
+    this.render();
+  }
+
+  private async deleteProfile(profile: LlmModelProfile): Promise<void> {
+    this.settings.modelProfiles = deleteModelProfile(
+      this.settings.modelProfiles,
+      profile.id
+    );
+    if (this.settings.activeModelProfileId === profile.id) {
+      this.settings = applyModelProfile(
+        this.settings,
+        this.settings.modelProfiles[0]
+      );
+    }
+    await this.save();
+    this.render();
+  }
+
+  private async saveDraftProfile(options: {
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+    temperature: string;
+    supportsVision: boolean;
+  }): Promise<void> {
+    const parsedTemperature = Number.parseFloat(options.temperature);
+    const profile = createModelProfileFromSettings(
+      {
+        baseUrl: options.baseUrl,
+        apiKey: options.apiKey,
+        model: options.model,
+        temperature: Number.isFinite(parsedTemperature)
+          ? parsedTemperature
+          : DEFAULT_SETTINGS.temperature,
+        supportsVision: options.supportsVision
+      },
+      {
+        id: this.draftProfile.id,
+        name: options.name || options.model || "Model profile"
+      }
+    );
+
+    this.settings.modelProfiles = upsertModelProfile(
+      this.settings.modelProfiles,
+      profile
+    );
+    this.settings = applyModelProfile(this.settings, profile);
+    this.draftProfile = profile;
+    await this.save();
+    new Notice(`Saved model profile: ${profile.name}`);
+    this.render();
   }
 
   private async save(): Promise<void> {

@@ -23,7 +23,7 @@ const results: VaultSearchResult[] = [
 
 const brief = buildWikiLiveBrief(results);
 
-assert.ok(brief.includes("Contex Wiki live memory"));
+assert.ok(brief.includes("Mindo Wiki live memory"));
 assert.ok(brief.includes("Local LLM"));
 assert.ok(brief.includes("Contex Wiki/Wiki/Concepts/Local LLM.md"));
 assert.ok(brief.includes("Speak from this memory"));

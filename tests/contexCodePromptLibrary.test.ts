@@ -16,7 +16,7 @@ assert.equal(lines.length, prompts.length);
 assert.equal(JSON.parse(lines[0]).kind, "prompt");
 
 const markdown = buildContexCodePromptLibraryMarkdown();
-assert.match(markdown, /Contex Code Prompt Library/);
+assert.match(markdown, /Mindo Code Prompt Library/);
 assert.match(markdown, /contex-code-plan-seed/);
 
 console.log("contexCodePromptLibrary tests passed");

@@ -42,6 +42,7 @@ const contentByPath: Record<string, string> = {
 
 const app = {
   vault: {
+    configDir: ".obsidian",
     getMarkdownFiles: () => files,
     cachedRead: async (file: { path: string }) => {
       readCounts[file.path] = (readCounts[file.path] ?? 0) + 1;

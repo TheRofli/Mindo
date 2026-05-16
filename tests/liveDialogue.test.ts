@@ -17,6 +17,8 @@ assert.ok(instruction.includes("Never read a whole note aloud"));
 assert.ok(instruction.includes("ask one brief useful follow-up question"));
 assert.ok(instruction.includes("prefer doing the action through tools/local actions"));
 assert.ok(instruction.includes("If the user interrupts"));
+assert.ok(instruction.includes("If current note context is provided"));
+assert.ok(instruction.includes("do not say you lack access"));
 
 assert.equal(buildLiveDialogueAcknowledgement("thinking"), "Секунду.");
 assert.equal(buildLiveDialogueAcknowledgement("opening"), "Открываю.");
@@ -33,7 +35,7 @@ assert.equal(
     label: "Opened note",
     path: "Test/Test.md"
   }),
-  "Открыла файл Test/Test.md. Что дальше?"
+  "Открыл файл Test/Test.md. Что дальше?"
 );
 
 assert.equal(
@@ -41,7 +43,7 @@ assert.equal(
     status: "failed",
     label: "Action not resolved"
   }),
-  "Не смогла безопасно выполнить это действие. Уточни файл, папку или текст, и я попробую ещё раз."
+  "Не смог безопасно выполнить это действие. Уточни файл, папку или текст, и я попробую ещё раз."
 );
 
 console.log("liveDialogue tests passed");

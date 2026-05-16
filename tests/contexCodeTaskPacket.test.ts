@@ -16,7 +16,7 @@ assert.equal(
 const packet = buildTaskPacket(plan, "task_1_1_first_task", {
   verificationCommands: ["npm run verify"],
 });
-assert.match(packet, /Contex Code Task Packet/);
+assert.match(packet, /Mindo Code Task Packet/);
 assert.match(packet, /First task/);
 assert.match(packet, /src\/contexCode\/planTypes\.ts/);
 assert.match(packet, /npm run verify/);

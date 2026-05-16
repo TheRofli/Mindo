@@ -30,7 +30,7 @@ export function chooseGeneratedNoteTitle(options: {
   rawContent: string;
   userPrompt?: string;
 }): string {
-  const currentTitle = cleanupGeneratedTitle(options.currentTitle) || "Contex Note";
+  const currentTitle = cleanupGeneratedTitle(options.currentTitle) || "Mindo Note";
   const generatedTitle = extractFirstMarkdownHeadingTitle(options.rawContent);
 
   if (!generatedTitle) {

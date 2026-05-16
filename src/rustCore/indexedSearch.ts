@@ -129,7 +129,7 @@ export async function searchWithRustCoreIndex(
       executablePath,
       lastError: error instanceof Error ? error.message : String(error)
     });
-    console.warn("[Contex Agent] Rust sidecar search unavailable", error);
+    console.warn("[Mindo] Rust sidecar search unavailable", error);
     activeSession.stop();
     session = null;
     return null;
@@ -184,7 +184,7 @@ export async function resolvePathsWithRustCore(
       executablePath,
       lastError: error instanceof Error ? error.message : String(error)
     });
-    console.warn("[Contex Agent] Rust sidecar resolver unavailable", error);
+    console.warn("[Mindo] Rust sidecar resolver unavailable", error);
     activeSession.stop();
     session = null;
     return null;
@@ -238,7 +238,7 @@ export async function findTextOccurrenceWithRustCore(
       executablePath,
       lastError: error instanceof Error ? error.message : String(error)
     });
-    console.warn("[Contex Agent] Rust sidecar text occurrence unavailable", error);
+    console.warn("[Mindo] Rust sidecar text occurrence unavailable", error);
     activeSession.stop();
     session = null;
     return null;
@@ -375,7 +375,7 @@ class RustCoreIndexSession {
       const message = chunk.toString("utf8").trim();
 
       if (message) {
-        console.warn("[Contex Agent] Rust sidecar stderr", message);
+        console.warn("[Mindo] Rust sidecar stderr", message);
       }
     });
     this.child.on("error", (error) => {

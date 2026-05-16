@@ -1,5 +1,9 @@
 import { buildTaskPacket } from "./taskPacket";
 import { derivePlanTitle } from "./planIds";
+import {
+  buildContexCodeArtifactPaths,
+  saveContexCodePlanArtifacts
+} from "./planArtifacts";
 import { buildContexCodeWikiEvent, recordContexCodeWikiEvent, type ContexCodeWikiEventWriter } from "./wikiEvents";
 import { getCurrentTask, transitionTask } from "./progress";
 import { loadContexCodePlan, saveContexCodePlan, type ContexCodeVaultAdapterLike } from "./planStorage";
@@ -7,6 +11,7 @@ import { normalizeContexCodePlan } from "./planSchema";
 import { extractPlanIdFromBlock } from "./planBlock";
 import { extractProjectNoteTitle, syncProjectNoteWithPlan } from "./projectNote";
 import { getUiLanguageFromObsidianApp } from "../i18n";
+import type { UiLanguage } from "../i18n";
 import type { ContexCodeActionResult, ContexCodePlan } from "./planTypes";
 
 export interface ContexCodeFileLike {
@@ -28,6 +33,7 @@ export interface ContexCodeAppLike {
 
 export interface ContexCodeCommandOptions {
   now?: string;
+  language?: UiLanguage;
   wikiWriter?: ContexCodeWikiEventWriter;
   planDraft?: unknown;
 }
@@ -38,17 +44,18 @@ export async function createContexCodePlanFromActiveNote(
 ): Promise<ContexCodeActionResult & { plan: ContexCodePlan }> {
   const activeFile = requireActiveMarkdownFile(app);
   const now = options.now ?? new Date().toISOString();
+  const language = options.language ?? getUiLanguageFromObsidianApp(app);
   const markdown = await app.vault.read(activeFile);
   const noteTitle = extractProjectNoteTitle(
     markdown,
-    activeFile.basename ?? activeFile.name ?? "Contex Code Plan"
+    activeFile.basename ?? activeFile.name ?? "Mindo Code Plan"
   );
   const draftTitle = readDraftTitle(options.planDraft);
   const title = draftTitle ?? derivePlanTitle(noteTitle);
   const phases =
     buildPhasesFromDraft(options.planDraft, activeFile.path, now) ??
-    buildDefaultPhasesFromMarkdown(markdown, activeFile.path, now);
-  const plan = normalizeContexCodePlan(
+    buildDefaultPhasesFromMarkdown(markdown, activeFile.path, now, language);
+  const basePlan = normalizeContexCodePlan(
     {
       title,
       status: "active",
@@ -69,10 +76,20 @@ export async function createContexCodePlanFromActiveNote(
     },
     now
   );
+  const artifactPaths = buildContexCodeArtifactPaths(
+    basePlan.projectNotePath,
+    basePlan.title,
+    basePlan.id
+  );
+  const plan = {
+    ...basePlan,
+    ...artifactPaths
+  };
 
   await saveContexCodePlan(app.vault.adapter, plan);
+  await saveContexCodePlanArtifacts(app.vault.adapter, plan, markdown);
   await app.vault.modify(activeFile, syncProjectNoteWithPlan(markdown, plan, {
-    language: getUiLanguageFromObsidianApp(app)
+    language
   }));
   await recordContexCodeWikiEvent(
     options.wikiWriter,
@@ -82,7 +99,7 @@ export async function createContexCodePlanFromActiveNote(
   return {
     kind: "contex_code_plan",
     status: "saved",
-    message: `Created Contex Code plan ${plan.title}.`,
+    message: `Created Mindo Code plan ${plan.title}.`,
     path: activeFile.path,
     planId: plan.id,
     plan
@@ -96,7 +113,7 @@ export async function prepareCurrentContexCodeTaskPacket(
   const { activeFile, plan } = await loadPlanForActiveNote(app);
   const currentTask = getCurrentTask(plan);
   if (!currentTask) {
-    throw new Error("No unfinished Contex Code task found.");
+    throw new Error("No unfinished Mindo Code task found.");
   }
 
   const packet = buildTaskPacket(plan, currentTask.id, {
@@ -130,14 +147,14 @@ export async function markCurrentContexCodeTaskDone(
   const { activeFile, markdown, plan } = await loadPlanForActiveNote(app);
   const currentTask = getCurrentTask(plan);
   if (!currentTask) {
-    throw new Error("No unfinished Contex Code task found.");
+    throw new Error("No unfinished Mindo Code task found.");
   }
 
   const now = options.now ?? new Date().toISOString();
   const nextPlan = transitionTask(plan, currentTask.id, "done", now);
   await saveContexCodePlan(app.vault.adapter, nextPlan);
   await app.vault.modify(activeFile, syncProjectNoteWithPlan(markdown, nextPlan, {
-    language: getUiLanguageFromObsidianApp(app)
+    language: options.language ?? getUiLanguageFromObsidianApp(app)
   }));
   await recordContexCodeWikiEvent(
     options.wikiWriter,
@@ -160,7 +177,7 @@ export async function syncCurrentContexCodePlan(
 ): Promise<ContexCodeActionResult & { plan: ContexCodePlan }> {
   const { activeFile, markdown, plan } = await loadPlanForActiveNote(app);
   await app.vault.modify(activeFile, syncProjectNoteWithPlan(markdown, plan, {
-    language: getUiLanguageFromObsidianApp(app)
+    language: options.language ?? getUiLanguageFromObsidianApp(app)
   }));
   await recordContexCodeWikiEvent(
     options.wikiWriter,
@@ -174,7 +191,7 @@ export async function syncCurrentContexCodePlan(
   return {
     kind: "contex_code_plan_sync",
     status: "saved",
-    message: `Synced Contex Code plan ${plan.title}.`,
+    message: `Synced Mindo Code plan ${plan.title}.`,
     path: activeFile.path,
     planId: plan.id,
     plan
@@ -184,7 +201,8 @@ export async function syncCurrentContexCodePlan(
 function buildDefaultPhasesFromMarkdown(
   markdown: string,
   path: string,
-  now: string
+  now: string,
+  language: UiLanguage
 ): unknown[] {
   const headings = markdown
     .split("\n")
@@ -198,16 +216,22 @@ function buildDefaultPhasesFromMarkdown(
     {
       id: "phase_1",
       title: "Implementation",
+      displayTitle: language === "ru" ? "Реализация" : undefined,
       status: "in_progress",
       summary: "Turn the project note into executable coding tasks.",
+      displaySummary:
+        language === "ru"
+          ? "Превратить проектную заметку в исполняемые задачи для разработки."
+          : undefined,
       tasks: seed.slice(0, 3).map((heading, index) => ({
         title: heading,
+        displayTitle: heading,
         status: index === 0 ? "in_progress" : "queued",
         summary: `Implement or refine: ${heading}.`,
         acceptance: [
           "The change is implemented in the project.",
           "Relevant tests or manual checks pass.",
-          "The project note and Contex Code plan stay in sync."
+          "The project note and Mindo Code plan stay in sync."
         ],
         files: [path],
         commands: ["npm run test"],
@@ -256,7 +280,7 @@ function buildPhasesFromDraft(
           acceptance: readStringArray(task.acceptance, [
             "The task is implemented in code.",
             "The change is verified with tests or a manual check.",
-            "The project note and Contex Code plan stay in sync."
+            "The project note and Mindo Code plan stay in sync."
           ]),
           files: readStringArray(task.files, [path]),
           commands: readStringArray(task.commands, ["npm run test"]),
@@ -311,7 +335,7 @@ async function loadPlanForActiveNote(app: ContexCodeAppLike): Promise<{
   const markdown = await app.vault.read(activeFile);
   const planId = extractPlanIdFromBlock(markdown);
   if (!planId) {
-    throw new Error("Active note does not contain a Contex Code plan block.");
+    throw new Error("Active note does not contain a Mindo Code plan block.");
   }
 
   return {
@@ -324,7 +348,7 @@ async function loadPlanForActiveNote(app: ContexCodeAppLike): Promise<{
 function requireActiveMarkdownFile(app: ContexCodeAppLike): ContexCodeFileLike {
   const activeFile = app.workspace.getActiveFile();
   if (!activeFile || !activeFile.path.toLowerCase().endsWith(".md")) {
-    throw new Error("Open a Markdown note before using Contex Code.");
+    throw new Error("Open a Markdown note before using Mindo Code.");
   }
 
   return activeFile;

@@ -1,3 +1,5 @@
+import { replaceUnsafePdfControlCharacters } from "./textSanitizers";
+
 export type AttachmentKind = "image" | "pdf" | "text" | "binary";
 
 export function classifyAttachment(
@@ -119,11 +121,9 @@ function decodePdfHexString(value: string): string {
     return decodeUtf16Bytes(bytes, false);
   }
 
-  return bytes
-    .map((byte) => String.fromCharCode(byte))
-    .join("")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]+/g, " ")
-    .trim();
+  return replaceUnsafePdfControlCharacters(
+    bytes.map((byte) => String.fromCharCode(byte)).join("")
+  ).trim();
 }
 
 function decodeUtf16Bytes(bytes: number[], littleEndian: boolean): string {

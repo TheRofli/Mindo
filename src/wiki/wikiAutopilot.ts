@@ -5,6 +5,7 @@ import type {
 } from "../actions/actionTypes";
 import type {
   ContexWikiNode,
+  ContexWikiNodeType,
   ContexWikiSourceKind,
   ContexWikiSourceRef
 } from "./wikiSchema";
@@ -38,6 +39,9 @@ export interface WikiAutopilotDecision {
   title: string;
   reason: string;
   confidence: number;
+  signals: string[];
+  misses: string[];
+  targetNodeType: ContexWikiNodeType;
   targetNodeId?: string;
   targetPath?: string;
   sourceActionIds: string[];
@@ -48,6 +52,12 @@ export interface WikiAutopilotDecision {
 interface WikiAutopilotActionInput {
   sourceActionIds?: string[];
   userText: string;
+}
+
+interface WikiMemorySignalAnalysis {
+  score: number;
+  signals: string[];
+  misses: string[];
 }
 
 const MEMORY_RECEIPT_STATUSES = new Set<ContexActionStatus>([
@@ -76,14 +86,16 @@ export function decideWikiAutopilot(
       .filter((path): path is string => Boolean(path))
   ]);
   const memoryReceipts = receipts.filter(isMemoryReceipt);
-  const signalScore = getMemorySignalScore({
+  const signalAnalysis = getMemorySignalScore({
     userText: input.userText,
     assistantText: input.assistantText,
     memoryReceipts,
     sourcePaths,
     webSources: input.webSources ?? []
   });
+  const signalScore = signalAnalysis.score;
   const title = inferWikiTitle(input, sourcePaths);
+  const inferredNodeType = inferWikiNodeType(input, title);
   const sources = buildAutopilotSources({
     sourcePaths,
     webSources: input.webSources ?? [],
@@ -98,6 +110,9 @@ export function decideWikiAutopilot(
       title,
       reason: "No durable memory signal was strong enough for Wiki update.",
       confidence: 0.2,
+      signals: signalAnalysis.signals,
+      misses: signalAnalysis.misses,
+      targetNodeType: inferredNodeType,
       sourceActionIds,
       sourcePaths,
       sources
@@ -114,6 +129,9 @@ export function decideWikiAutopilot(
       title: match.node.title,
       reason: "New evidence belongs to an existing Wiki node; merge instead of creating a duplicate.",
       confidence,
+      signals: signalAnalysis.signals,
+      misses: signalAnalysis.misses,
+      targetNodeType: match.node.type,
       targetNodeId: match.node.id,
       targetPath: match.node.path,
       sourceActionIds,
@@ -129,6 +147,9 @@ export function decideWikiAutopilot(
       title: match.node.title,
       reason: "New evidence appears related to an existing Wiki node and should be reviewed as an update.",
       confidence,
+      signals: signalAnalysis.signals,
+      misses: signalAnalysis.misses,
+      targetNodeType: match.node.type,
       targetNodeId: match.node.id,
       targetPath: match.node.path,
       sourceActionIds,
@@ -143,6 +164,9 @@ export function decideWikiAutopilot(
     title,
     reason: "The result contains durable project knowledge and should be proposed for Wiki memory.",
     confidence,
+    signals: signalAnalysis.signals,
+    misses: signalAnalysis.misses,
+    targetNodeType: inferredNodeType,
     sourceActionIds,
     sourcePaths,
     sources
@@ -184,7 +208,15 @@ export function formatWikiAutopilotDecision(
   decision: WikiAutopilotDecision
 ): string {
   if (!decision.shouldWriteWiki) {
-    return "Wiki autopilot: ignored. No durable memory update needed.";
+    const missLines = decision.misses.length
+      ? decision.misses.map((miss) => `- ${miss}`)
+      : ["- No durable memory update needed."];
+
+    return [
+      "Wiki autopilot: ignored.",
+      "Not saved because:",
+      ...missLines
+    ].join("\n");
   }
 
   const target = decision.targetPath
@@ -193,6 +225,9 @@ export function formatWikiAutopilotDecision(
   const sourceLines = decision.sources.length
     ? decision.sources.map((source) => `- ${source.title}: ${source.locator}`)
     : ["- No concrete sources captured."];
+  const signalLines = decision.signals.length
+    ? decision.signals.map((signal) => `- ${signal}`)
+    : ["- No explicit signals captured."];
 
   return [
     "Wiki autopilot",
@@ -200,6 +235,8 @@ export function formatWikiAutopilotDecision(
     `Target: ${target}`,
     `Confidence: ${Math.round(decision.confidence * 100)}%`,
     `Reason: ${decision.reason}`,
+    "Signals:",
+    ...signalLines,
     "Sources:",
     ...sourceLines
   ].join("\n");
@@ -218,28 +255,72 @@ function getMemorySignalScore(input: {
   memoryReceipts: ContexActionReceipt[];
   sourcePaths: string[];
   webSources: WikiAutopilotWebSourceInput[];
-}): number {
+}): WikiMemorySignalAnalysis {
   let score = 0;
+  const signals: string[] = [];
+  const misses: string[] = [];
   const combined = `${input.userText}\n${input.assistantText ?? ""}`.toLowerCase();
+  const userLength = input.userText.trim().length;
+  const assistantLength = (input.assistantText ?? "").trim().length;
+  const combinedLength = userLength + assistantLength;
+  const addSignal = (points: number, signal: string) => {
+    score += points;
+    signals.push(signal);
+  };
 
   if (input.memoryReceipts.length) {
-    score += 2;
+    const receiptSummary = input.memoryReceipts
+      .slice(0, 3)
+      .map((receipt) => `${receipt.kind}:${receipt.status}`)
+      .join(", ");
+    addSignal(2, `action receipt: ${receiptSummary}`);
+  } else {
+    misses.push("No saved/applied action receipts.");
   }
 
   if (input.webSources.length) {
-    score += 2;
+    addSignal(2, `web source evidence: ${input.webSources.length} source(s)`);
+  } else {
+    misses.push("No web sources captured.");
   }
 
   if (input.sourcePaths.length) {
-    score += 1;
+    addSignal(1, `vault source evidence: ${input.sourcePaths.length} path(s)`);
+  } else {
+    misses.push("No vault source paths captured.");
+  }
+
+  if (combinedLength > 900 && userLength > 80 && assistantLength > 300) {
+    addSignal(2, "substantial user+assistant discussion");
+  } else if (combinedLength > 450 && userLength > 60 && assistantLength > 180) {
+    addSignal(1, "medium-length user+assistant discussion");
+  } else {
+    misses.push("Conversation was too short to be durable on length alone.");
   }
 
   if (
-    /research|web|source|plan|roadmap|architecture|decision|compare|analysis|analyze|update|current|fresh|modern|202[0-9]/i.test(
+    /research|web|source|plan|roadmap|architecture|decision|compare|analysis|analyze|update|current|fresh|modern|workflow|milestone|task|spec|design|implementation|202[0-9]/i.test(
       combined
     )
   ) {
-    score += 2;
+    addSignal(2, "durable planning/research keywords");
+  }
+
+  const problemComparable = combined.replace(/\bno problem\b/gi, "");
+  if (
+    /problem|bug|error|failed|broken|fix|issue|regression|stuck|interrupt|barge-in|vad|memory|wiki/i.test(
+      problemComparable
+    )
+  ) {
+    addSignal(2, "problem/debug/memory keywords");
+  }
+
+  if (
+    /создай|создать|план|проект|роадмап|архитект|решени|сравн|анализ|актуал|свеж|современ|исслед|интернет|источник|ошибка|проблем|слом|не работает|почини|исправ|вики|памят|воркфлоу|workflow|milestone|майлстоун|задач|спек|дизайн|реализац/u.test(
+      combined
+    )
+  ) {
+    addSignal(2, "localized durable project keywords");
   }
 
   if (
@@ -247,14 +328,22 @@ function getMemorySignalScore(input: {
       combined
     )
   ) {
-    score += 2;
+    addSignal(2, "localized research/update keywords");
   }
 
   if ((input.assistantText?.length ?? 0) > 600) {
-    score += 1;
+    addSignal(1, "long assistant answer");
   }
 
-  return score;
+  if (!signals.some((signal) => signal.includes("keywords"))) {
+    misses.push("No durable planning, research, problem, or Wiki keywords detected.");
+  }
+
+  return {
+    score,
+    signals: uniqueStrings(signals),
+    misses: uniqueStrings(misses)
+  };
 }
 
 function inferWikiTitle(input: WikiAutopilotInput, sourcePaths: string[]): string {
@@ -277,7 +366,155 @@ function inferWikiTitle(input: WikiAutopilotInput, sourcePaths: string[]): strin
     .replace(/\b(using|with|from|в|из|с)\b.*$/iu, "")
     .trim();
 
-  return cleanTitle(normalized || "Contex Wiki Update");
+  return cleanTitle(normalized || "Mindo Wiki Update");
+}
+
+function inferWikiNodeType(
+  input: WikiAutopilotInput,
+  title: string
+): ContexWikiNodeType {
+  const combined = normalizeComparableText(
+    [
+      title,
+      input.userText,
+      input.assistantText ?? "",
+      ...(input.sourcePaths ?? [])
+    ].join(" ")
+  );
+
+  if (
+    hasTypeSignal(combined, [
+      "error",
+      "failed",
+      "bug",
+      "broken",
+      "issue",
+      "problem",
+      "fix",
+      "regression",
+      "stuck",
+      "barge in",
+      "vad",
+      "не работает",
+      "ошибка",
+      "проблема",
+      "слом",
+      "баг",
+      "почини",
+      "исправ"
+    ])
+  ) {
+    return "problem";
+  }
+
+  if (
+    hasTypeSignal(combined, [
+      "decide",
+      "decision",
+      "chosen",
+      "accepted",
+      "rejected",
+      "tradeoff",
+      "принимаем",
+      "решение",
+      "выбор",
+      "договорились",
+      "отклон",
+      "принять"
+    ])
+  ) {
+    return "decision";
+  }
+
+  if (
+    hasTypeSignal(combined, [
+      "model",
+      "llm",
+      "stt",
+      "tts",
+      "whisper",
+      "parakeet",
+      "silero",
+      "kokoro",
+      "gemini",
+      "deepseek",
+      "qwen",
+      "llama",
+      "bitnet",
+      "модель",
+      "голос",
+      "транскрип",
+      "озвуч",
+      "нейросет"
+    ])
+  ) {
+    return "model";
+  }
+
+  if (
+    hasTypeSignal(combined, [
+      "project",
+      "roadmap",
+      "mvp",
+      "release",
+      "product",
+      "architecture",
+      "plan",
+      "feature",
+      "v1",
+      "проект",
+      "план",
+      "роадмап",
+      "фича",
+      "продукт",
+      "релиз",
+      "архитектура"
+    ])
+  ) {
+    return "project";
+  }
+
+  if (
+    hasTypeSignal(combined, [
+      "workflow",
+      "flow",
+      "pipeline",
+      "process",
+      "scenario",
+      "режим",
+      "процесс",
+      "сценарий",
+      "пайплайн",
+      "флоу"
+    ])
+  ) {
+    return "workflow";
+  }
+
+  if (
+    hasTypeSignal(combined, [
+      "tool",
+      "plugin",
+      "extension",
+      "cli",
+      "api",
+      "runtime",
+      "service",
+      "инструмент",
+      "плагин",
+      "расширение",
+      "кнопка",
+      "сервис"
+    ])
+  ) {
+    return "tool";
+  }
+
+  return "concept";
+}
+
+function hasTypeSignal(value: string, signals: string[]): boolean {
+  return signals.some((signal) => value.includes(normalizeComparableText(signal)));
 }
 
 function buildAutopilotSources(input: {

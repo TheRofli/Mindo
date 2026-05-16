@@ -17,15 +17,21 @@ const distRoot = join(pluginDir, "dist");
 const distDir = join(distRoot, "contex-agent");
 const checkOnly = process.argv.includes("--check");
 
-const requiredFiles = ["manifest.json", "main.js", "styles.css"];
+const requiredFiles = [
+  "manifest.json",
+  "main.js",
+  "styles.css",
+  "assets/logo.png",
+  "assets/fonts/comfortaa/Comfortaa-Regular.ttf",
+  "assets/fonts/comfortaa/OFL.txt",
+  "assets/fonts/comfortaa/SOURCE.md"
+];
 const optionalFiles = [
   "README.md",
   "CHANGELOG.md",
   "LICENSE",
   "versions.json",
-  "docs/RELEASE.md",
-  "contex_black.png",
-  "contex_white.png"
+  "docs/RELEASE.md"
 ];
 const optionalDirectories = ["bin", "tools/stt_server", "tools/tts_server"];
 const ignoredDirectoryNames = new Set([
@@ -83,7 +89,7 @@ if (/\bobsidian\b/i.test(manifest.description)) {
 
 if (manifest.isDesktopOnly !== true) {
   console.error(
-    "manifest.json must set isDesktopOnly=true because Contex bundles desktop runtimes and Node process APIs."
+    "manifest.json must set isDesktopOnly=true because Mindo bundles desktop runtimes and Node process APIs."
   );
   process.exit(1);
 }

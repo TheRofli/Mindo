@@ -3,12 +3,45 @@ import type {
   ContexActionSource
 } from "../actions/actionTypes";
 import {
+  buildWorkflowContext,
+  routeWorkflow,
+  workflowRouteToActionPlan,
+  type WorkflowAttachmentContext,
+  type WorkflowUiLanguage
+} from "../workflows";
+import {
   parseSemanticLocalCommandPlan,
   type SemanticLocalCommand
 } from "../views/semanticLocalCommandPlan";
 
 export function parseToolRouterResponse(response: string): SemanticLocalCommand[] {
   return parseSemanticLocalCommandPlan(response) ?? [];
+}
+
+export function routeUserTextToActionPlan(input: {
+  source: ContexActionSource;
+  userText: string;
+  uiLanguage?: WorkflowUiLanguage;
+  activeNotePath?: string;
+  activeNoteExcerpt?: string;
+  selectedText?: string;
+  attachments?: WorkflowAttachmentContext[];
+  vaultPaths?: string[];
+}): ContexActionPlan {
+  const route = routeWorkflow(
+    buildWorkflowContext({
+      source: input.source,
+      userText: input.userText,
+      uiLanguage: input.uiLanguage,
+      activeNotePath: input.activeNotePath,
+      activeNoteExcerpt: input.activeNoteExcerpt,
+      selectedText: input.selectedText,
+      attachments: input.attachments,
+      vaultPaths: input.vaultPaths
+    })
+  );
+
+  return workflowRouteToActionPlan(route, input.source);
 }
 
 export function routerCommandsToActionPlan(input: {

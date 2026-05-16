@@ -41,8 +41,8 @@ const app = {
 };
 
 async function main(): Promise<void> {
-  assert.equal(normalizeWikiRootFolder("  /Contex Wiki//  "), "Contex Wiki");
-  assert.equal(normalizeWikiRootFolder("../bad"), "Contex Wiki");
+  assert.equal(normalizeWikiRootFolder("  /Mindo Wiki//  "), "Mindo Wiki");
+  assert.equal(normalizeWikiRootFolder("../bad"), "Mindo Wiki");
 
   const paths = getContexWikiPaths("Knowledge/Core");
 
@@ -56,40 +56,40 @@ async function main(): Promise<void> {
   assert.ok(paths.inbox.proposedUpdates.endsWith("/Inbox/Proposed Updates"));
 
   const before = await getContexWikiStatus(app as never, {
-    wikiRootFolder: "Contex Wiki"
+    wikiRootFolder: "Mindo Wiki"
   });
 
   assert.equal(before.initialized, false);
-  assert.ok(before.missingFolders.includes("Contex Wiki/Raw/Web"));
-  assert.ok(before.missingFiles.includes("Contex Wiki/Schema/nodes.jsonl"));
+  assert.ok(before.missingFolders.includes("Mindo Wiki/Raw/Web"));
+  assert.ok(before.missingFiles.includes("Mindo Wiki/Schema/nodes.jsonl"));
 
   const after = await ensureContexWikiStructure(app as never, {
-    wikiRootFolder: "Contex Wiki"
+    wikiRootFolder: "Mindo Wiki"
   });
 
   assert.equal(after.initialized, true);
-  assert.equal(adapter.files.get("Contex Wiki/Schema/nodes.jsonl"), "");
-  assert.equal(adapter.files.get("Contex Wiki/Schema/contex-code-events.jsonl"), "");
-  assert.equal(adapter.files.get("Contex Wiki/Schema/aliases.json"), "{}\n");
+  assert.equal(adapter.files.get("Mindo Wiki/Schema/nodes.jsonl"), "");
+  assert.equal(adapter.files.get("Mindo Wiki/Schema/contex-code-events.jsonl"), "");
+  assert.equal(adapter.files.get("Mindo Wiki/Schema/aliases.json"), "{}\n");
   assert.ok(
     adapter.files
-      .get("Contex Wiki/Schema/prompts.jsonl")
+      .get("Mindo Wiki/Schema/prompts.jsonl")
       ?.includes('"id":"create-note-intent"')
   );
   assert.ok(
     adapter.files
-      .get("Contex Wiki/Schema/prompts.jsonl")
+      .get("Mindo Wiki/Schema/prompts.jsonl")
       ?.includes('"id":"contex-code-plan-seed"')
   );
   assert.ok(
     adapter.files
-      .get("Contex Wiki/Wiki/Prompts/Prompt Library.md")
+      .get("Mindo Wiki/Wiki/Prompts/Prompt Library.md")
       ?.includes("Create note intent")
   );
   assert.ok(
     adapter.files
-      .get("Contex Wiki/Wiki/Prompts/Prompt Library.md")
-      ?.includes("Contex Code Prompt Library")
+      .get("Mindo Wiki/Wiki/Prompts/Prompt Library.md")
+      ?.includes("Mindo Code Prompt Library")
   );
 }
 

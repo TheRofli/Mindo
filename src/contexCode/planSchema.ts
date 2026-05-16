@@ -42,7 +42,7 @@ export function normalizeContexCodePlan(
   now = new Date().toISOString()
 ): ContexCodePlan {
   const source = isRecord(input) ? input : {};
-  const title = readString(source.title, "Untitled Contex Code Plan");
+  const title = readString(source.title, "Untitled Mindo Code Plan");
   const id = readString(source.id, createPlanId(title, now));
   const projectNotePath = readString(source.projectNotePath, `${title}.md`);
   const createdAt = readString(source.createdAt, now);
@@ -66,6 +66,8 @@ export function normalizeContexCodePlan(
     title,
     status,
     projectNotePath,
+    designSpecPath: readOptionalString(source.designSpecPath),
+    fullPlanPath: readOptionalString(source.fullPlanPath),
     currentTaskId,
     createdAt,
     updatedAt,
@@ -111,6 +113,8 @@ function normalizePhase(input: unknown, index: number, now: string): ContexCodeP
   return {
     id: readString(source.id, `phase_${index + 1}`),
     title,
+    displayTitle: readOptionalString(source.displayTitle),
+    displaySummary: readOptionalString(source.displaySummary),
     status: normalizeTaskStatus(source.status),
     summary: readString(source.summary, ""),
     tasks
@@ -129,6 +133,8 @@ function normalizeTask(
   return {
     id: readString(source.id, createTaskId(phaseIndex + 1, taskIndex + 1, title)),
     title,
+    displayTitle: readOptionalString(source.displayTitle),
+    displaySummary: readOptionalString(source.displaySummary),
     status: normalizeTaskStatus(source.status),
     summary: readString(source.summary, ""),
     acceptance: readStringArray(source.acceptance),

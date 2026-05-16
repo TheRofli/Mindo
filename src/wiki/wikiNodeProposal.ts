@@ -31,7 +31,7 @@ export function buildWikiNodeExtractionPrompt(input: {
     .join("\n");
 
   return [
-    "You maintain Contex Wiki, a structured durable memory for an Obsidian vault.",
+    "You maintain Mindo Wiki, a structured durable memory for an Obsidian vault.",
     "Return strict JSON only: {\"proposals\":[{\"action\":\"create|update|merge\",\"reason\":\"...\",\"node\":{...}}]}",
     "Prefer updating existing nodes when the fact belongs there. Create only when the concept is distinct.",
     "Every node must include id, type, title, aliases, summary, path, confidence, freshness, sources, relations, createdAt, updatedAt.",

@@ -27,7 +27,7 @@ export function extractProjectNoteTitle(input: string, fallback: string): string
     cleanupProjectTitle(heading) ??
     cleanupProjectTitle(parsedJson?.title) ??
     cleanupProjectTitle(fallback) ??
-    "Contex Code Plan"
+    "Mindo Code Plan"
   );
 }
 

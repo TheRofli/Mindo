@@ -36,6 +36,8 @@ export interface ContexCodeSource {
 export interface ContexCodeTask {
   id: string;
   title: string;
+  displayTitle?: string;
+  displaySummary?: string;
   status: ContexCodeTaskStatus;
   summary: string;
   acceptance: string[];
@@ -49,6 +51,8 @@ export interface ContexCodeTask {
 export interface ContexCodePhase {
   id: string;
   title: string;
+  displayTitle?: string;
+  displaySummary?: string;
   status: ContexCodeTaskStatus;
   summary: string;
   tasks: ContexCodeTask[];
@@ -60,6 +64,8 @@ export interface ContexCodePlan {
   title: string;
   status: ContexCodePlanStatus;
   projectNotePath: string;
+  designSpecPath?: string;
+  fullPlanPath?: string;
   currentTaskId?: string;
   createdAt: string;
   updatedAt: string;

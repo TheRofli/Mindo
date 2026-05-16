@@ -30,7 +30,7 @@ export function parseCreateNoteProposalText(
     }
 
     return {
-      title: firstSafeMarkdownHeading(content) ?? "Contex Note",
+      title: firstSafeMarkdownHeading(content) ?? "Mindo Note",
       content: sanitizeRawCreateNoteFallback(content)
     };
   }

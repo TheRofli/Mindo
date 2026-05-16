@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist before publishing Contex Agent to GitHub or preparing an Obsidian plugin release.
+Use this checklist before publishing Mindo to GitHub or preparing an Obsidian plugin release.
 
 For the full GitHub and Obsidian Community Plugin path, read:
 
@@ -53,14 +53,16 @@ Required:
 - `manifest.json`
 - `main.js`
 - `styles.css`
+- `assets/logo.png`
+- `assets/fonts/comfortaa/Comfortaa-Regular.ttf`
+- `assets/fonts/comfortaa/OFL.txt`
+- `assets/fonts/comfortaa/SOURCE.md`
 
 Recommended for full local-first features:
 
 - `bin/contex-core.exe` or platform-specific `contex-core`
 - `tools/stt_server`
 - `tools/tts_server`
-- `contex_black.png`
-- `contex_white.png`
 
 ## 5. Version Bump
 

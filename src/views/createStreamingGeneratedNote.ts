@@ -64,13 +64,13 @@ export async function createStreamingGeneratedNote(
   options: CreateStreamingGeneratedNoteOptions
 ): Promise<string> {
   const normalizedFolder = normalizePath(options.targetFolder).replace(/^\/+/, "");
-  let title = sanitizeCreateNoteTitle(options.title) || "Contex Note";
+  let title = sanitizeCreateNoteTitle(options.title) || "Mindo Note";
   let path = await getUniqueNotePath(
     deps.app,
     `${normalizedFolder}/${slugifyTitle(title)}.md`
   );
 
-  assertWritableVaultPath(path);
+  assertWritableVaultPath(path, deps.app.vault.configDir);
   await ensureFolderForPath(deps.app, path);
   deps.pushActionTimeline("running", "Creating note", path, path);
   deps.setStatus("Status: Creating note");
@@ -95,7 +95,7 @@ export async function createStreamingGeneratedNote(
     writeChain = writeChain
       .then(() => deps.app.vault.modify(file, content))
       .catch((error) => {
-        console.warn("[Contex Agent] Streaming note write failed", error);
+        console.warn("[Mindo] Streaming note write failed", error);
       });
   };
   const writeDraft = (force = false): void => {
@@ -149,7 +149,7 @@ export async function createStreamingGeneratedNote(
         options.requestContext ?? null
       );
     } else {
-      console.warn("[Contex Agent] Note stream ended early", streamError);
+      console.warn("[Mindo] Note stream ended early", streamError);
     }
   }
 
@@ -211,7 +211,9 @@ export async function createStreamingGeneratedNote(
       label: options.savedLabel ?? "Created note",
       detail: path,
       path
-    }
+    },
+    options.userContent,
+    options.userAttachments
   );
   new Notice(`Created note: ${path}`);
   deps.pushActionTimeline("done", "Created note", path, path);

@@ -11,11 +11,11 @@ const BUILT_IN_PROMPTS: ContexCodePrompt[] = [
   {
     kind: "prompt",
     id: "contex-code-plan-seed",
-    title: "Seed Contex Code plan",
+    title: "Seed Mindo Code plan",
     category: "planning",
     intents: ["code-plan", "project-plan", "todo"],
     prompt:
-      "Create a Contex Code plan from the project note. Split work into phases, small tasks, acceptance criteria, likely files, verification commands, and source references."
+      "Create a Mindo Code plan from the project note. Split work into phases, small tasks, acceptance criteria, likely files, verification commands, and source references."
   },
   {
     kind: "prompt",
@@ -24,7 +24,7 @@ const BUILT_IN_PROMPTS: ContexCodePrompt[] = [
     category: "planning",
     intents: ["next-task", "task-packet", "handoff"],
     prompt:
-      "Prepare a concise task packet for the next unfinished Contex Code task. Include goal, files, acceptance, sources, commands, and constraints."
+      "Prepare a concise task packet for the next unfinished Mindo Code task. Include goal, files, acceptance, sources, commands, and constraints."
   },
   {
     kind: "prompt",
@@ -51,7 +51,7 @@ const BUILT_IN_PROMPTS: ContexCodePrompt[] = [
     category: "debugging",
     intents: ["debug", "failure", "triage"],
     prompt:
-      "Turn a failing Contex Code task into a debugging checklist: reproduction, observed behavior, expected behavior, likely cause, fix, and verification."
+      "Turn a failing Mindo Code task into a debugging checklist: reproduction, observed behavior, expected behavior, likely cause, fix, and verification."
   },
   {
     kind: "prompt",
@@ -78,7 +78,7 @@ const BUILT_IN_PROMPTS: ContexCodePrompt[] = [
     category: "release",
     intents: ["release", "package", "verify"],
     prompt:
-      "Check whether a Contex Code milestone is ready to ship: tests, build, docs, packaging, migrations, user-facing errors, and rollback path."
+      "Check whether a Mindo Code milestone is ready to ship: tests, build, docs, packaging, migrations, user-facing errors, and rollback path."
   }
 ];
 
@@ -99,9 +99,9 @@ export function buildContexCodePromptLibraryMarkdown(): string {
   }
 
   return [
-    "# Contex Code Prompt Library",
+    "# Mindo Code Prompt Library",
     "",
-    "Reusable prompts for Contex Code planning, coding handoffs, reviews, source audits, debugging, and release checks.",
+    "Reusable prompts for Mindo Code planning, coding handoffs, reviews, source audits, debugging, and release checks.",
     "",
     ...Array.from(categories.entries()).flatMap(([category, categoryPrompts]) => [
       `## ${titleCase(category)}`,

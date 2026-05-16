@@ -1,12 +1,12 @@
-# Contex Agent
+# Mindo
 
-Contex Agent is a local-first AI companion for Obsidian. It can chat with the active note, search the vault, create and edit Markdown notes, run local voice workflows, and maintain a structured Contex Wiki memory layer.
+Mindo is a local-first AI companion for Obsidian. It can chat with the active note, search the vault, create and edit Markdown notes, run local voice workflows, and maintain a structured Mindo Wiki memory layer.
 
 ## Features
 
 - Active-note aware chat with vault and web context.
 - Tool routing for opening notes, creating notes, replacing text, undoing changes, and running research workflows.
-- Contex Wiki memory with Raw, Wiki, Schema, Inbox, Prompt Library, and maintenance files.
+- Mindo Wiki memory with Raw, Wiki, Schema, Inbox, Prompt Library, and maintenance files.
 - Real source references for vault notes and web results.
 - Attachments for images, PDF/text files, and dragged files.
 - Local STT/TTS helpers for Parakeet/faster-whisper and Silero/Kokoro-style speech workflows.
@@ -30,24 +30,24 @@ Contex Agent is a local-first AI companion for Obsidian. It can chat with the ac
    npm run build
    ```
 
-4. Enable `Contex Agent` in Obsidian community plugins.
+4. Enable `Mindo` in Obsidian community plugins.
 
-## Contex Wiki Initial Build
+## Mindo Wiki Initial Build
 
 Open Obsidian's command palette and run:
 
-`Contex: Initialize Wiki`
+`Mindo: Initialize Wiki`
 
-Or open `Settings -> Contex Agent -> Wiki -> Contex Wiki Initial Build` and click `Initialize / repair`.
+Or open `Settings -> Mindo -> Wiki -> Mindo Wiki Initial Build` and click `Initialize / repair`.
 
 This creates or repairs:
 
-- `Contex Wiki/Raw`
-- `Contex Wiki/Wiki`
-- `Contex Wiki/Schema`
-- `Contex Wiki/Inbox`
-- `Contex Wiki/Wiki/Prompts/Prompt Library.md`
-- `Contex Wiki/Schema/prompts.jsonl`
+- `Mindo Wiki/Raw`
+- `Mindo Wiki/Wiki`
+- `Mindo Wiki/Schema`
+- `Mindo Wiki/Inbox`
+- `Mindo Wiki/Wiki/Prompts/Prompt Library.md`
+- `Mindo Wiki/Schema/prompts.jsonl`
 
 ## Development
 
@@ -82,7 +82,7 @@ Read the release docs before making the repository public:
 - `docs/GITHUB_RELEASE_AND_COMMUNITY_SUBMISSION.md`
 - `docs/PUBLICATION_SECURITY.md`
 
-Contex Agent is source-available. Users may install, run, and inspect the
+Mindo is source-available. Users may install, run, and inspect the
 plugin, but redistribution, competing products, and commercial reuse require
 permission. See `LICENSE`.
 

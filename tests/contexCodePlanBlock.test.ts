@@ -11,8 +11,8 @@ const emptyProgress = String.fromCharCode(0x2591).repeat(20);
 
 const plan = makeContexCodePlan();
 const block = renderContexCodeBlock(plan);
-assert.match(block, /\[!contex-code\]\+ Contex Code · 0\/2 · 0%/u);
-assert.doesNotMatch(block, /\[!contex-code\]\+ Contex Code \/ Test Plan/);
+assert.match(block, /\[!contex-code\]\+ Mindo Code · 0\/2 · 0%/u);
+assert.doesNotMatch(block, /\[!contex-code\]\+ Mindo Code \/ Test Plan/);
 assert.doesNotMatch(block, new RegExp(`\\[!contex-code\\][^\\n]+${emptyProgress}`, "u"));
 assert.match(block, /data-plan-id="ccp_20260510_test_plan"/);
 assert.match(block, /Test Plan/);
@@ -38,6 +38,34 @@ assert.match(ruBlock, /\u041f\u0440\u043e\u0435\u043a\u0442/u);
 assert.match(ruBlock, /\u0421\u0442\u0430\u0442\u0443\u0441/u);
 assert.match(ruBlock, /\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441/u);
 
+const basePhase = plan.phases[0]!;
+const localizedPlan = makeContexCodePlan({
+  phases: [
+    {
+      ...basePhase,
+      displayTitle: "Фундамент",
+      displaySummary: "Подготовить основу проекта.",
+      tasks: [
+        {
+          ...basePhase.tasks[0]!,
+          displayTitle: "Создать первый стабильный модуль",
+          displaySummary: "Собрать базовый контракт.",
+        },
+        {
+          ...basePhase.tasks[1]!,
+          displayTitle: "Подготовить следующий шаг",
+          displaySummary: "Продолжить реализацию.",
+        },
+      ],
+    },
+  ],
+});
+const localizedBlock = renderContexCodeBlock(localizedPlan, { language: "ru" });
+assert.match(localizedBlock, /Фундамент/u);
+assert.match(localizedBlock, /Создать первый стабильный модуль/u);
+assert.match(localizedBlock, /Подготовить следующий шаг/u);
+assert.doesNotMatch(localizedBlock, /First task|Second task/u);
+
 const note = "# Test Plan\n\nBody text.";
 const inserted = upsertContexCodeBlock(note, plan);
 assert.match(inserted, /^# Test Plan\n\n> \[!contex-code\]\+/m);
@@ -50,7 +78,7 @@ assert.equal(findContexCodeBlock(updated)?.planId, plan.id);
 
 const legacy = [
   "<!-- contex-code:start id=\"legacy_plan\" -->",
-  "> [!info] Contex Code Plan",
+  "> [!info] Mindo Code Plan",
   "> **Project:** Legacy",
   "<!-- contex-code:end -->",
 ].join("\n");

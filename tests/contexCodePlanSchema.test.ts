@@ -27,9 +27,9 @@ const normalized = normalizeContexCodePlan(
 );
 
 assert.equal(normalized.version, 1);
-assert.equal(normalized.title, "Untitled Contex Code Plan");
+assert.equal(normalized.title, "Untitled Mindo Code Plan");
 assert.equal(normalized.status, "draft");
-assert.equal(normalized.projectNotePath, "Untitled Contex Code Plan.md");
+assert.equal(normalized.projectNotePath, "Untitled Mindo Code Plan.md");
 assert.equal(normalized.phases[0]?.status, "queued");
 assert.equal(normalized.phases[0]?.tasks[0]?.status, "queued");
 assert.deepEqual(normalized.phases[0]?.tasks[0]?.acceptance, ["Done"]);

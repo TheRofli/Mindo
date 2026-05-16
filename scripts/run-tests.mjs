@@ -38,7 +38,7 @@ for (const test of tests) {
       "--target=node22",
       `--outfile=${outfile}`,
       "--banner:js=import { fileURLToPath as __contexFileURLToPath } from 'node:url'; import { dirname as __contexDirname } from 'node:path'; const __filename = __contexFileURLToPath(import.meta.url); const __dirname = __contexDirname(__filename);",
-      "--external:obsidian"
+      "--alias:obsidian=tests/obsidianStub.ts"
     ],
     {
       cwd: pluginDir,

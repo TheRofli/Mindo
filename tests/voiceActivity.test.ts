@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import {
+  LIVE_BARGE_IN_VOICE_ACTIVITY,
+  LIVE_TURN_VOICE_ACTIVITY,
   createVoiceActivityState,
   getNormalizedAudioLevelFromTimeDomainData,
   reduceVoiceActivity
 } from "../src/voice/voiceActivity";
+
+assert.ok(
+  LIVE_TURN_VOICE_ACTIVITY.silenceMs >= 1800 &&
+    LIVE_TURN_VOICE_ACTIVITY.silenceMs <= 2200,
+  "live dialogue should auto-send after about two seconds of silence"
+);
+assert.ok(
+  LIVE_BARGE_IN_VOICE_ACTIVITY.speechThreshold < LIVE_TURN_VOICE_ACTIVITY.speechThreshold,
+  "barge-in detection should be more sensitive than normal turn detection"
+);
 
 let state = createVoiceActivityState();
 state = reduceVoiceActivity(state, {

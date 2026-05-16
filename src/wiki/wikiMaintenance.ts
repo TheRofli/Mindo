@@ -123,7 +123,7 @@ export function buildWikiMaintenanceMarkdown(
   parseErrors: Array<{ line: number; message: string }> = []
 ): string {
   return [
-    "# Contex Wiki Maintenance",
+    "# Mindo Wiki Maintenance",
     "",
     `Generated: ${new Date().toISOString()}`,
     "",

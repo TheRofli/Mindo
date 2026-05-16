@@ -46,7 +46,7 @@ assert.equal(checklist.steps.some((step) => step.advanced), true);
 
 const markdown = formatOnboardingChecklist(checklist);
 
-assert.ok(markdown.includes("Contex onboarding"));
+assert.ok(markdown.includes("Mindo onboarding"));
 assert.ok(markdown.includes("[x]"));
 assert.ok(markdown.includes("Auto-start or configure STT"));
 

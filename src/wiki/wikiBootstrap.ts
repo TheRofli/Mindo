@@ -3,7 +3,7 @@ import {
   buildContexCodePromptLibraryMarkdown
 } from "../contexCode/promptLibrary";
 
-export const DEFAULT_WIKI_ROOT_FOLDER = "Contex Wiki";
+export const DEFAULT_WIKI_ROOT_FOLDER = "Mindo Wiki";
 
 export interface ContexWikiSettingsLike {
   wikiRootFolder?: string;
@@ -56,15 +56,15 @@ export interface ContexWikiStatus {
   missingFiles: string[];
 }
 
-interface VaultAdapterLike {
+export interface ContexWikiVaultAdapterLike {
   exists(path: string): Promise<boolean>;
   mkdir(path: string): Promise<void>;
   write(path: string, content: string): Promise<void>;
 }
 
-interface AppLike {
+export interface ContexWikiAppLike {
   vault: {
-    adapter: VaultAdapterLike;
+    adapter: ContexWikiVaultAdapterLike;
   };
 }
 
@@ -138,7 +138,7 @@ export function getContexWikiPaths(rootFolder?: string): ContexWikiPaths {
 }
 
 export async function getContexWikiStatus(
-  app: AppLike,
+  app: ContexWikiAppLike,
   settings: ContexWikiSettingsLike
 ): Promise<ContexWikiStatus> {
   const paths = getContexWikiPaths(settings.wikiRootFolder);
@@ -166,7 +166,7 @@ export async function getContexWikiStatus(
 }
 
 export async function ensureContexWikiStructure(
-  app: AppLike,
+  app: ContexWikiAppLike,
   settings: ContexWikiSettingsLike
 ): Promise<ContexWikiStatus> {
   const paths = getContexWikiPaths(settings.wikiRootFolder);
@@ -229,7 +229,7 @@ function getContexWikiFiles(paths: ContexWikiPaths): Array<{
     },
     {
       path: paths.schema.maintenanceLog,
-      initialContent: "# Contex Wiki Maintenance Log\n\n"
+      initialContent: "# Mindo Wiki Maintenance Log\n\n"
     },
     {
       path: joinPath(paths.wiki.prompts, "Prompt Library.md"),
@@ -459,9 +459,9 @@ function buildDefaultPromptLibraryMarkdown(): string {
   }
 
   return [
-    "# Contex Prompt Library",
+    "# Mindo Prompt Library",
     "",
-    "This library is created during Contex Wiki initialization. Contex can use it as reusable intent memory for note work, Wiki updates, voice dialogue, attachments, web research, and tool routing.",
+    "This library is created during Mindo Wiki initialization. Mindo can use it as reusable intent memory for note work, Wiki updates, voice dialogue, attachments, web research, and tool routing.",
     "",
     "Do not treat these prompts as user commands by themselves. Use them as patterns when the user's request matches the intent.",
     "",

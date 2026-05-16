@@ -24,7 +24,7 @@ export function buildWikiLiveBrief(
   }
 
   const heading = wikiResults.length
-    ? "Contex Wiki live memory"
+    ? "Mindo Wiki live memory"
     : "Relevant live context";
 
   return [
@@ -44,7 +44,7 @@ export function buildWikiLiveBrief(
 function isWikiResult(result: VaultSearchResult): boolean {
   return (
     result.matches?.includes("wiki") === true ||
-    /(^|\/)Contex Wiki\/Wiki\//i.test(result.path)
+    /(^|\/)(?:Contex|Mindo) Wiki\/Wiki\//i.test(result.path)
   );
 }
 

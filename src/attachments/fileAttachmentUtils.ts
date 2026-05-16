@@ -1,3 +1,5 @@
+import { replaceUnsafePdfControlCharacters } from "./textSanitizers";
+
 const MAX_PDF_FALLBACK_TEXT_CHARS = 12000;
 const MAX_PDF_STREAMS_TO_INSPECT = 40;
 
@@ -177,11 +179,9 @@ function decodePdfHexString(value: string): string {
     return decodeUtf16Bytes(bytes, false);
   }
 
-  return bytes
-    .map((byte) => String.fromCharCode(byte))
-    .join("")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]+/g, " ")
-    .trim();
+  return replaceUnsafePdfControlCharacters(
+    bytes.map((byte) => String.fromCharCode(byte)).join("")
+  ).trim();
 }
 
 function findFlatePdfStreams(
@@ -237,7 +237,7 @@ async function inflatePdfStream(bytes: Uint8Array): Promise<Uint8Array | null> {
 
       const streamBytes = new Uint8Array(bytes.byteLength);
       streamBytes.set(bytes);
-      const stream = new Blob([streamBytes.buffer as ArrayBuffer]).stream().pipeThrough(
+      const stream = new Blob([toExactArrayBuffer(streamBytes)]).stream().pipeThrough(
         new DecompressionStream(format)
       );
       const buffer = await new Response(stream).arrayBuffer();
@@ -248,6 +248,12 @@ async function inflatePdfStream(bytes: Uint8Array): Promise<Uint8Array | null> {
   }
 
   return null;
+}
+
+function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
 }
 
 function binaryBytesToString(bytes: Uint8Array): string {

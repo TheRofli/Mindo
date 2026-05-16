@@ -1,6 +1,7 @@
 import {
   ensureContexWikiStructure,
   getContexWikiPaths,
+  type ContexWikiAppLike,
   type ContexWikiSettingsLike
 } from "../wiki/wikiBootstrap";
 import type { ContexCodeWikiEvent, ContexCodeWikiEventWriter } from "./wikiEvents";
@@ -12,18 +13,12 @@ interface VaultAdapterLike {
   write(path: string, content: string): Promise<void>;
 }
 
-interface AppLike {
-  vault: {
-    adapter: VaultAdapterLike;
-  };
-}
-
 export interface ContexCodeWikiEventWriterSettings extends ContexWikiSettingsLike {
   wikiEnabled?: boolean;
 }
 
 export function createContexCodeWikiEventWriter(
-  app: AppLike,
+  app: ContexWikiAppLike & { vault: { adapter: VaultAdapterLike } },
   settings: ContexCodeWikiEventWriterSettings
 ): ContexCodeWikiEventWriter {
   return {
@@ -34,7 +29,7 @@ export function createContexCodeWikiEventWriter(
 }
 
 export async function appendContexCodeWikiEvent(
-  app: AppLike,
+  app: ContexWikiAppLike & { vault: { adapter: VaultAdapterLike } },
   settings: ContexCodeWikiEventWriterSettings,
   event: ContexCodeWikiEvent
 ): Promise<string | null> {

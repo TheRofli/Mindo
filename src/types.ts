@@ -18,6 +18,8 @@ export type SttBackend = "faster-whisper" | "parakeet";
 export type SttQualityMode = "speed" | "balanced" | "quality";
 export type WebSearchProvider = "searxng" | "duckduckgo";
 export type UiLanguage = "en" | "ru";
+export type UiFontMode = "comfortaa" | "obsidian";
+export type DialogueModelMode = "single" | "dual";
 export type WikiMemoryMode = "manual" | "assisted" | "auto-safe";
 export type WebSourceType =
   | "news"
@@ -46,6 +48,9 @@ export interface ContexSettings {
   supportsVision: boolean;
   modelProfiles: LlmModelProfile[];
   activeModelProfileId: string;
+  dialogueModelMode: DialogueModelMode;
+  dialogueFastModelProfileId: string;
+  dialogueSmartModelProfileId: string;
   sttEndpoint: string;
   sttBackend: SttBackend;
   autoStartLocalStt: boolean;
@@ -69,6 +74,8 @@ export interface ContexSettings {
   webSearchEndpoint: string;
   webSearchMaxResults: number;
   uiLanguage: UiLanguage;
+  uiFont: UiFontMode;
+  autoApplyEdits: boolean;
   wikiEnabled: boolean;
   wikiRootFolder: string;
   wikiMemoryMode: WikiMemoryMode;
@@ -215,6 +222,9 @@ export const DEFAULT_SETTINGS: ContexSettings = {
     }
   ],
   activeModelProfileId: "local-gemma",
+  dialogueModelMode: "single",
+  dialogueFastModelProfileId: "local-gemma",
+  dialogueSmartModelProfileId: "local-gemma",
   sttEndpoint: "http://127.0.0.1:9000/transcribe",
   sttBackend: "parakeet",
   autoStartLocalStt: true,
@@ -223,7 +233,7 @@ export const DEFAULT_SETTINGS: ContexSettings = {
   sttLanguage: "auto",
   sttBeamSize: 5,
   sttInitialPrompt:
-    "Russian speech with technical terms: Contex, Obsidian, Markdown, BitNet, vault, rollback, Kokoro, Silero, Whisper, local LLM.",
+    "Russian speech with technical terms: Mindo, Obsidian, Markdown, BitNet, vault, rollback, Kokoro, Silero, Whisper, local LLM.",
   ttsProvider: "silero",
   ttsReadMode: "full",
   autoStartLocalTts: true,
@@ -232,21 +242,23 @@ export const DEFAULT_SETTINGS: ContexSettings = {
   kokoroVoice: "af_heart",
   kokoroModel: "onnx-community/Kokoro-82M-v1.0-ONNX",
   sileroTtsEndpoint: "http://127.0.0.1:9100/speech",
-  sileroVoice: "baya",
+  sileroVoice: "eugene",
   webSearchEnabled: false,
   webSearchProvider: "duckduckgo",
   webSearchEndpoint: "http://127.0.0.1:8080/search",
   webSearchMaxResults: 6,
   uiLanguage: "en",
+  uiFont: "comfortaa",
+  autoApplyEdits: false,
   wikiEnabled: true,
-  wikiRootFolder: "Contex Wiki",
+  wikiRootFolder: "Mindo Wiki",
   wikiMemoryMode: "auto-safe",
   sileroPronunciationDictionary: {
     Markdown: "маркдаун",
     ONNX: "он эн эн икс",
     LoopLM: "луп эл эм",
     BitNet: "битнет",
-    Contex: "контекс",
+    Mindo: "миндо",
     Obsidian: "обсидиан",
     WebGPU: "веб джи пи ю",
     STT: "эс ти ти",

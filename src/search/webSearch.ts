@@ -92,7 +92,7 @@ export async function searchWeb(
   }
 
   if (!settings.webSearchEnabled) {
-    throw new Error("Web search is disabled. Enable it in Contex Agent settings.");
+    throw new Error("Web search is disabled. Enable it in Mindo settings.");
   }
 
   if (settings.webSearchProvider === "duckduckgo") {

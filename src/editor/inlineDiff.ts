@@ -257,11 +257,19 @@ async function openMarkdownView(
 }
 
 function getEditorView(markdownView: MarkdownView): EditorView | null {
-  const editor = markdownView.editor as unknown as {
-    cm?: EditorView;
-  };
+  const editor = markdownView.editor;
 
-  return editor.cm ?? null;
+  if (!isRecord(editor) || !("cm" in editor)) {
+    return null;
+  }
+
+  const cm = editor.cm;
+
+  return cm instanceof EditorView ? cm : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function findOccurrenceRange(

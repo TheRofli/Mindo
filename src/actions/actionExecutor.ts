@@ -7,6 +7,7 @@ import type {
   ReplaceSelectionAction,
   ReplaceTextAction,
   SearchAction,
+  UpdateNoteAction,
   WikiUpdateAction
 } from "./actionTypes";
 import { classifyActionPermission } from "./permissions";
@@ -21,6 +22,7 @@ export interface ContexActionExecutorOps {
   undoChange?: (action: DiffAction) => Promise<string | null | void>;
   searchVault?: (action: SearchAction) => Promise<string | null | void>;
   searchWeb?: (action: SearchAction) => Promise<string | null | void>;
+  updateNote?: (action: UpdateNoteAction) => Promise<string | null | void>;
   updateWiki?: (action: WikiUpdateAction) => Promise<string | null | void>;
   readAnswer?: (actionId: string) => Promise<void>;
 }
@@ -153,6 +155,19 @@ export async function executeContexActionPlan(
           kind: action.kind,
           status: "done",
           label: "Web search complete"
+        });
+        continue;
+      }
+
+      if (action.kind === "update_note") {
+        ensureExecutor(ops.updateNote, action.kind);
+        const path = await ops.updateNote(action);
+        receipts.push({
+          actionId: action.id,
+          kind: action.kind,
+          status: "preview",
+          label: "Note update preview",
+          path: typeof path === "string" ? path : undefined
         });
         continue;
       }

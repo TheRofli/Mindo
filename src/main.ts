@@ -7,7 +7,7 @@ import {
   mkdirSync
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { Notice, Plugin, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, requestUrl, TFile, WorkspaceLeaf } from "obsidian";
 import { buildContexDoctorReport } from "./diagnostics/contexDoctor";
 import { DoctorModal } from "./diagnostics/DoctorModal";
 import { rollbackLastAiChangeOperation } from "./history/changeHistory";
@@ -37,7 +37,6 @@ import {
   SUPPORTED_KOKORO_VOICES
 } from "./voice/kokoroVoices";
 import {
-  DEFAULT_SILERO_VOICE,
   SUPPORTED_SILERO_VOICES
 } from "./voice/sileroVoices";
 import { sanitizeTtsProvider } from "./voice/ttsProviders";
@@ -46,12 +45,19 @@ import {
   isSttHealthCompatible
 } from "./voice/sttHealth";
 import {
-  getEffectiveSttBeamSize,
   sanitizeSttBackend,
   sanitizeSttModelForBackend,
   sanitizeSttQualityMode
 } from "./voice/sttOptions";
 import { getSttRuntimeConfig } from "./voice/sttRuntime";
+import {
+  getConfiguredLocalSileroVoiceName,
+  getEndpointHealthUrl,
+  getEndpointPort,
+  getLocalKokoroEnvironment,
+  getLocalSileroEnvironment,
+  getLocalSttEnvironment
+} from "./runtime/localServiceConfig";
 import {
   ensureContexWikiStructure,
   getContexWikiPaths,
@@ -71,6 +77,17 @@ import {
   type ContexWikiNode
 } from "./wiki/wikiSchema";
 
+type LoadedContexSettings = Partial<ContexSettings> & {
+  ttsProvider?: ContexSettings["ttsProvider"];
+  chatState?: ChatState;
+};
+
+interface LegacyContexSettingsFields {
+  chatterboxTtsEndpoint?: unknown;
+  chatterboxVoice?: unknown;
+  chatterboxModel?: unknown;
+}
+
 export default class ContexAgentPlugin extends Plugin {
   settings!: ContexSettings;
   private chatState: ChatState | null = null;
@@ -87,34 +104,32 @@ export default class ContexAgentPlugin extends Plugin {
     );
     this.registerEditorExtension(inlineDiffExtension);
 
-    this.addRibbonIcon("message-square", "Open Contex Agent", async () => {
-      await this.activateView();
+    this.addRibbonIcon("message-square", "Open Mindo", () => {
+      void this.activateView();
     });
 
     this.addCommand({
       id: "open-agent-sidebar",
-      name: "Contex: Open Agent Sidebar",
-      callback: async () => {
-        await this.activateView();
+      name: "Mindo: Open Sidebar",
+      callback: () => {
+        void this.activateView();
       }
     });
 
     this.addCommand({
       id: "rollback-last-ai-change",
-      name: "Contex: Rollback Last AI Change",
-      callback: async () => {
-        try {
+      name: "Mindo: Rollback Last AI Change",
+      callback: () => {
+        this.runCommand(async () => {
           const operation = await rollbackLastAiChangeOperation(this.app);
           new Notice(`Rolled back AI change in ${operation.filePath}.`);
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+        });
       }
     });
 
     this.addCommand({
       id: "show-ai-change-history",
-      name: "Contex: Show AI Change History",
+      name: "Mindo: Show AI Change History",
       callback: () => {
         new HistoryModal(this.app).open();
       }
@@ -122,174 +137,187 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "doctor",
-      name: "Contex: Doctor",
-      callback: async () => {
-        await this.openDoctor();
+      name: "Mindo: Doctor",
+      callback: () => {
+        this.openDoctor();
       }
     });
 
     this.addCommand({
       id: "create-note-from-selection",
-      name: "Contex: Create Note From Selection",
-      callback: async () => {
+      name: "Mindo: Create Note From Selection",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         await view?.createNoteFromCurrentSelection();
+        });
       }
     });
 
     this.addCommand({
       id: "remember-current-note",
-      name: "Contex: Remember Current Note",
-      callback: async () => {
+      name: "Mindo: Remember Current Note",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         await view?.rememberCurrentNote();
+        });
       }
     });
 
     this.addCommand({
       id: "update-current-note",
-      name: "Contex: Update Current Note",
-      callback: async () => {
+      name: "Mindo: Update Current Note",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         await view?.updateCurrentNote();
+        });
       }
     });
 
     this.addCommand({
       id: "create-roadmap-from-note",
-      name: "Contex: Create Roadmap From Current Note",
-      callback: async () => {
+      name: "Mindo: Create Roadmap From Current Note",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         await view?.createRoadmapFromCurrentNote();
+        });
       }
     });
 
     this.addCommand({
       id: "save-current-chat-as-note",
-      name: "Contex: Turn Current Chat Into Note",
-      callback: async () => {
+      name: "Mindo: Turn Current Chat Into Note",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         await view?.saveCurrentChatAsNote();
+        });
       }
     });
 
     this.addCommand({
       id: "search-vault",
-      name: "Contex: Search Vault",
-      callback: async () => {
+      name: "Mindo: Search Vault",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         view?.focusVaultSearch();
+        });
       }
     });
 
     this.addCommand({
       id: "research-web",
-      name: "Contex: Research Web",
-      callback: async () => {
+      name: "Mindo: Research Web",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         view?.focusWebResearch();
+        });
       }
     });
 
     this.addCommand({
       id: "semantic-vault-search",
-      name: "Contex: Semantic Vault Search",
-      callback: async () => {
+      name: "Mindo: Semantic Vault Search",
+      callback: () => {
+        this.runCommand(async () => {
         const view = await this.activateView();
         view?.focusSemanticVaultSearch();
+        });
       }
     });
 
     this.addCommand({
       id: "create-code-plan",
-      name: "Contex: Create Code Plan",
-      callback: async () => {
-        try {
+      name: "Mindo: Create Code Plan",
+      callback: () => {
+        this.runCommand(async () => {
           const result = await this.createContexCodeController().createPlan();
           new Notice(`Created Code Plan: ${result.path ?? result.planId}`);
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+        });
       }
     });
 
     this.addCommand({
       id: "prepare-code-task-packet",
-      name: "Contex: Prepare Code Task Packet",
-      callback: async () => {
-        try {
+      name: "Mindo: Prepare Code Task Packet",
+      callback: () => {
+        this.runCommand(async () => {
           const result = await this.createContexCodeController().prepareTaskPacket();
           await navigator.clipboard.writeText(result.packet);
-          new Notice("Contex Code task packet copied to clipboard.");
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+          new Notice("Mindo Code task packet copied to clipboard.");
+        });
       }
     });
 
     this.addCommand({
       id: "mark-code-task-done",
-      name: "Contex: Mark Code Task Done",
-      callback: async () => {
-        try {
+      name: "Mindo: Mark Code Task Done",
+      callback: () => {
+        this.runCommand(async () => {
           const result = await this.createContexCodeController().markTaskDone();
           new Notice(`Marked Code task done: ${result.path ?? result.planId}`);
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+        });
       }
     });
 
     this.addCommand({
       id: "sync-code-plan",
-      name: "Contex: Sync Code Plan",
-      callback: async () => {
-        try {
+      name: "Mindo: Sync Code Plan",
+      callback: () => {
+        this.runCommand(async () => {
           const result = await this.createContexCodeController().syncPlan();
           new Notice(`Synced Code Plan: ${result.path ?? result.planId}`);
-        } catch (error) {
-          new Notice(this.getErrorMessage(error));
-        }
+        });
       }
     });
 
     this.addCommand({
       id: "initialize-wiki",
-      name: "Contex: Initialize Wiki",
-      callback: async () => {
+      name: "Mindo: Initialize Wiki",
+      callback: () => {
+        this.runCommand(async () => {
         const status = await ensureContexWikiStructure(
-          this.app as never,
+          this.app,
           this.settings
         );
         new Notice(
           status.initialized
-            ? `Contex Wiki is ready at ${status.root}.`
-            : `Contex Wiki still has ${status.missingFolders.length + status.missingFiles.length} missing items.`
+            ? `Mindo Wiki is ready at ${status.root}.`
+            : `Mindo Wiki still has ${status.missingFolders.length + status.missingFiles.length} missing items.`
         );
+        });
       }
     });
 
     this.addCommand({
       id: "wiki-status",
-      name: "Contex: Wiki Status",
-      callback: async () => {
+      name: "Mindo: Wiki Status",
+      callback: () => {
+        this.runCommand(async () => {
         const status = await getContexWikiStatus(
-          this.app as never,
+          this.app,
           this.settings
         );
         new Notice(
           status.initialized
-            ? `Contex Wiki is initialized at ${status.root}.`
-            : `Contex Wiki is not initialized. Missing ${status.missingFolders.length} folders and ${status.missingFiles.length} files.`
+            ? `Mindo Wiki is initialized at ${status.root}.`
+            : `Mindo Wiki is not initialized. Missing ${status.missingFolders.length} folders and ${status.missingFiles.length} files.`
         );
+        });
       }
     });
 
     this.addCommand({
       id: "wiki-maintenance-report",
-      name: "Contex: Wiki Maintenance Report",
-      callback: async () => {
-        await ensureContexWikiStructure(this.app as never, this.settings);
+      name: "Mindo: Wiki Maintenance Report",
+      callback: () => {
+        this.runCommand(async () => {
+        await ensureContexWikiStructure(this.app, this.settings);
         const paths = getContexWikiPaths(this.settings.wikiRootFolder);
         const adapter = this.app.vault.adapter;
         const nodesContent = await adapter.read(paths.schema.nodes).catch(() => "");
@@ -312,14 +340,15 @@ export default class ContexAgentPlugin extends Plugin {
           buildWikiMaintenanceMarkdown(report, parsedNodes.errors)
         );
         new Notice(
-          `Contex Wiki maintenance report updated: ${paths.schema.maintenanceLog}`
+          `Mindo Wiki maintenance report updated: ${paths.schema.maintenanceLog}`
         );
+        });
       }
     });
 
     this.addCommand({
       id: "start-local-stt-server",
-      name: "Contex: Start Local STT Server",
+      name: "Mindo: Start Local STT Server",
       callback: () => {
         void this.startLocalSttServer();
       }
@@ -327,7 +356,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "stop-local-stt-server",
-      name: "Contex: Stop Local STT Server",
+      name: "Mindo: Stop Local STT Server",
       callback: () => {
         void this.stopLocalSttServer();
       }
@@ -335,20 +364,22 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "check-local-stt-server",
-      name: "Contex: Check Local STT Server",
-      callback: async () => {
+      name: "Mindo: Check Local STT Server",
+      callback: () => {
+        this.runCommand(async () => {
         const isHealthy = await this.isLocalSttServerHealthy();
         new Notice(
           isHealthy
-            ? "Contex Local STT Server is responding."
-            : "Contex Local STT Server is not responding yet."
+            ? "Mindo Local STT Server is responding."
+            : "Mindo Local STT Server is not responding yet."
         );
+        });
       }
     });
 
     this.addCommand({
       id: "start-local-kokoro-server",
-      name: "Contex: Start Local Kokoro Server",
+      name: "Mindo: Start Local Kokoro Server",
       callback: () => {
         void this.startLocalKokoroServer();
       }
@@ -356,7 +387,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "stop-local-kokoro-server",
-      name: "Contex: Stop Local Kokoro Server",
+      name: "Mindo: Stop Local Kokoro Server",
       callback: () => {
         void this.stopLocalKokoroServer();
       }
@@ -364,20 +395,22 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "check-local-kokoro-server",
-      name: "Contex: Check Local Kokoro Server",
-      callback: async () => {
+      name: "Mindo: Check Local Kokoro Server",
+      callback: () => {
+        this.runCommand(async () => {
         const isHealthy = await this.isLocalKokoroServerHealthy();
         new Notice(
           isHealthy
-            ? "Contex Local Kokoro Server is responding."
-            : "Contex Local Kokoro Server is not responding yet."
+            ? "Mindo Local Kokoro Server is responding."
+            : "Mindo Local Kokoro Server is not responding yet."
         );
+        });
       }
     });
 
     this.addCommand({
       id: "start-local-silero-server",
-      name: "Contex: Start Local Silero TTS Server",
+      name: "Mindo: Start Local Silero TTS Server",
       callback: () => {
         void this.startLocalSileroServer();
       }
@@ -385,7 +418,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "stop-local-silero-server",
-      name: "Contex: Stop Local Silero TTS Server",
+      name: "Mindo: Stop Local Silero TTS Server",
       callback: () => {
         void this.stopLocalSileroServer();
       }
@@ -393,14 +426,16 @@ export default class ContexAgentPlugin extends Plugin {
 
     this.addCommand({
       id: "check-local-silero-server",
-      name: "Contex: Check Local Silero TTS Server",
-      callback: async () => {
+      name: "Mindo: Check Local Silero TTS Server",
+      callback: () => {
+        this.runCommand(async () => {
         const isHealthy = await this.isLocalSileroServerHealthy();
         new Notice(
           isHealthy
-            ? "Contex Local Silero TTS Server is responding."
-            : "Contex Local Silero TTS Server is not responding yet."
+            ? "Mindo Local Silero TTS Server is responding."
+            : "Mindo Local Silero TTS Server is not responding yet."
         );
+        });
       }
     });
 
@@ -426,11 +461,46 @@ export default class ContexAgentPlugin extends Plugin {
 
   }
 
+  private runCommand(action: () => Promise<void>): void {
+    void action().catch((error) => {
+      new Notice(this.getErrorMessage(error));
+    });
+  }
+
   private createContexCodeController(): ContexCodeCommandController {
     return new ContexCodeCommandController(
-      this.app as unknown as ContexCodeAppLike,
+      this.createContexCodeAppLike(),
       this.settings
     );
+  }
+
+  private createContexCodeAppLike(): ContexCodeAppLike {
+    return {
+      vault: {
+        adapter: this.app.vault.adapter,
+        read: async (file) => {
+          const targetFile = this.getContexCodeVaultFile(file.path);
+          return this.app.vault.read(targetFile);
+        },
+        modify: async (file, content) => {
+          const targetFile = this.getContexCodeVaultFile(file.path);
+          await this.app.vault.modify(targetFile, content);
+        }
+      },
+      workspace: {
+        getActiveFile: () => this.app.workspace.getActiveFile()
+      }
+    };
+  }
+
+  private getContexCodeVaultFile(path: string): TFile {
+    const file = this.app.vault.getAbstractFileByPath(path);
+
+    if (!(file instanceof TFile)) {
+      throw new Error(`Mindo Code file not found: ${path}`);
+    }
+
+    return file;
   }
 
   onunload(): void {
@@ -438,25 +508,22 @@ export default class ContexAgentPlugin extends Plugin {
     void this.stopLocalSttServer(false);
     void this.stopLocalKokoroServer(false);
     void this.stopLocalSileroServer(false);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_CONTEXT_AGENT);
   }
 
   async loadSettings(): Promise<void> {
-    const loaded = (await this.loadData()) as
-      | (Partial<ContexSettings> & {
-          ttsProvider?: string;
-          chatState?: ChatState;
-        })
-      | null;
-    const migrated = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
+    const loaded = (await this.loadData()) as LoadedContexSettings | null;
+    const migrated: ContexSettings & LegacyContexSettingsFields = Object.assign(
+      {},
+      DEFAULT_SETTINGS,
+      loaded ?? {}
+    );
     const rawTtsProvider = String(
       loaded?.ttsProvider ?? DEFAULT_SETTINGS.ttsProvider
     );
 
-    const legacySettings = migrated as unknown as Record<string, unknown>;
-    delete legacySettings.chatterboxTtsEndpoint;
-    delete legacySettings.chatterboxVoice;
-    delete legacySettings.chatterboxModel;
+    delete migrated.chatterboxTtsEndpoint;
+    delete migrated.chatterboxVoice;
+    delete migrated.chatterboxModel;
 
     migrated.ttsProvider = sanitizeTtsProvider(rawTtsProvider);
 
@@ -465,6 +532,14 @@ export default class ContexAgentPlugin extends Plugin {
     }
 
     migrated.uiLanguage = sanitizeUiLanguage(migrated.uiLanguage);
+    migrated.uiFont =
+      migrated.uiFont === "obsidian" || migrated.uiFont === "comfortaa"
+        ? migrated.uiFont
+        : DEFAULT_SETTINGS.uiFont;
+    migrated.autoApplyEdits =
+      typeof migrated.autoApplyEdits === "boolean"
+        ? migrated.autoApplyEdits
+        : DEFAULT_SETTINGS.autoApplyEdits;
     migrated.wikiRootFolder = normalizeWikiRootFolder(migrated.wikiRootFolder);
     migrated.wikiEnabled =
       typeof migrated.wikiEnabled === "boolean"
@@ -482,10 +557,22 @@ export default class ContexAgentPlugin extends Plugin {
     const sanitizedModelProfiles = sanitizeModelProfiles(migrated);
     migrated.modelProfiles = sanitizedModelProfiles.profiles;
     migrated.activeModelProfileId = sanitizedModelProfiles.activeProfileId;
+    migrated.dialogueModelMode =
+      migrated.dialogueModelMode === "dual" ? "dual" : "single";
+    migrated.dialogueFastModelProfileId = sanitizedModelProfiles.profiles.some(
+      (profile) => profile.id === migrated.dialogueFastModelProfileId
+    )
+      ? migrated.dialogueFastModelProfileId
+      : sanitizedModelProfiles.activeProfileId;
+    migrated.dialogueSmartModelProfileId = sanitizedModelProfiles.profiles.some(
+      (profile) => profile.id === migrated.dialogueSmartModelProfileId
+    )
+      ? migrated.dialogueSmartModelProfileId
+      : sanitizedModelProfiles.activeProfileId;
     Object.assign(
       migrated,
       applyModelProfile(
-        migrated as ContexSettings,
+        migrated,
         sanitizedModelProfiles.profiles.find(
           (profile) => profile.id === sanitizedModelProfiles.activeProfileId
         ) ?? sanitizedModelProfiles.profiles[0]
@@ -533,7 +620,7 @@ export default class ContexAgentPlugin extends Plugin {
           }
         : DEFAULT_SETTINGS.sileroPronunciationDictionary;
 
-    this.settings = migrated as ContexSettings;
+    this.settings = migrated;
     this.chatState = sanitizeChatState(loaded?.chatState);
   }
 
@@ -549,7 +636,7 @@ export default class ContexAgentPlugin extends Plugin {
     return this.chatState;
   }
 
-  async openDoctor(): Promise<void> {
+  openDoctor(): void {
     const report = buildContexDoctorReport({
       settings: this.settings,
       activeNotePath: this.app.workspace.getActiveFile()?.path ?? null,
@@ -604,20 +691,23 @@ export default class ContexAgentPlugin extends Plugin {
       throw new Error("Kokoro TTS endpoint is not configured.");
     }
 
-    let response: Response;
+    let response: Awaited<ReturnType<typeof requestUrl>>;
 
     try {
-      response = await fetch(endpoint, {
+      response = await requestUrl({
+        url: endpoint,
         method: "POST",
+        contentType: "application/json",
         headers: {
-          "Content-Type": "application/json"
+          Accept: "audio/wav, audio/mpeg, application/octet-stream"
         },
         body: JSON.stringify({
           model: this.settings.kokoroModel || DEFAULT_SETTINGS.kokoroModel,
           input: text,
           voice: this.settings.kokoroVoice || DEFAULT_SETTINGS.kokoroVoice,
           response_format: "wav"
-        })
+        }),
+        throw: false
       });
     } catch (error) {
       throw new Error(
@@ -625,14 +715,16 @@ export default class ContexAgentPlugin extends Plugin {
       );
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status < 200 || response.status >= 300) {
+      const errorText = response.text.trim();
       throw new Error(
-        `Local Kokoro JS TTS request failed: ${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ""}`
+        `Local Kokoro JS TTS request failed: ${response.status}${errorText ? `: ${errorText}` : ""}`
       );
     }
 
-    return response.blob();
+    return new Blob([response.arrayBuffer], {
+      type: getResponseHeader(response.headers, "content-type") || "audio/wav"
+    });
   }
 
   async requestLocalSileroSpeechAudio(text: string): Promise<Blob> {
@@ -648,19 +740,22 @@ export default class ContexAgentPlugin extends Plugin {
       throw new Error("Silero TTS endpoint is not configured.");
     }
 
-    let response: Response;
+    let response: Awaited<ReturnType<typeof requestUrl>>;
 
     try {
-      response = await fetch(endpoint, {
+      response = await requestUrl({
+        url: endpoint,
         method: "POST",
+        contentType: "application/json",
         headers: {
-          "Content-Type": "application/json"
+          Accept: "audio/wav, audio/mpeg, application/octet-stream"
         },
         body: JSON.stringify({
           text,
-          voice: this.getConfiguredLocalSileroVoiceName(),
+          voice: getConfiguredLocalSileroVoiceName(this.settings),
           pronunciations: this.settings.sileroPronunciationDictionary
-        })
+        }),
+        throw: false
       });
     } catch (error) {
       throw new Error(
@@ -668,14 +763,16 @@ export default class ContexAgentPlugin extends Plugin {
       );
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status < 200 || response.status >= 300) {
+      const errorText = response.text.trim();
       throw new Error(
-        `Local Silero TTS request failed: ${response.status} ${response.statusText}${errorText ? `: ${errorText}` : ""}`
+        `Local Silero TTS request failed: ${response.status}${errorText ? `: ${errorText}` : ""}`
       );
     }
 
-    return response.blob();
+    return new Blob([response.arrayBuffer], {
+      type: getResponseHeader(response.headers, "content-type") || "audio/wav"
+    });
   }
 
   async ensureLocalSttServer(showNotice = true): Promise<boolean> {
@@ -742,7 +839,7 @@ export default class ContexAgentPlugin extends Plugin {
         this.app.workspace.getRightLeaf(true);
 
       if (!rightLeaf) {
-        new Notice("Could not open Contex Agent sidebar.");
+        new Notice("Could not open Mindo sidebar.");
         return null;
       }
 
@@ -771,7 +868,7 @@ export default class ContexAgentPlugin extends Plugin {
     if (await this.isLocalSttServerHealthy()) {
       if (showNotice) {
         const runtime = getSttRuntimeConfig(this.settings.sttBackend);
-        new Notice(`Contex ${runtime.startupLabel} STT Server is already responding.`);
+        new Notice(`Mindo ${runtime.startupLabel} STT Server is already responding.`);
       }
 
       return;
@@ -785,7 +882,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (this.localSttProcess && this.localSttProcess.exitCode === null) {
       if (showNotice) {
-        new Notice("Contex Local STT Server is already starting.");
+        new Notice("Mindo Local STT Server is already starting.");
       }
 
       return;
@@ -798,7 +895,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex plugin folder.");
+        new Notice("Could not resolve Mindo plugin folder.");
       }
 
       return;
@@ -807,7 +904,7 @@ export default class ContexAgentPlugin extends Plugin {
     const runtime = getSttRuntimeConfig(this.settings.sttBackend);
 
     this.writeLocalSttLog(
-      `\n\n=== Starting Contex ${runtime.startupLabel} STT Server ===\n`
+      `\n\n=== Starting Mindo ${runtime.startupLabel} STT Server ===\n`
     );
     this.localSttProcess = spawn(
       "powershell.exe",
@@ -820,7 +917,7 @@ export default class ContexAgentPlugin extends Plugin {
       ],
       {
         cwd: pluginDir,
-        env: this.getLocalSttEnvironment(),
+        env: getLocalSttEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -830,30 +927,37 @@ export default class ContexAgentPlugin extends Plugin {
       this.localSttProcess = null;
       const message = this.getErrorMessage(error);
       this.writeLocalSttLog(`\nProcess error: ${message}\n`);
-      new Notice(`Contex Local STT Server failed to start: ${message}`);
+      new Notice(`Mindo Local STT Server failed to start: ${message}`);
     });
 
     if (showNotice) {
       new Notice(
-        `Starting Contex ${runtime.startupLabel} STT Server. ${runtime.firstRunNotice}`
+        `Starting Mindo ${runtime.startupLabel} STT Server. ${runtime.firstRunNotice}`
       );
     }
 
-    window.setTimeout(async () => {
-      if (await this.isLocalSttServerHealthy()) {
-        if (showNotice) {
-          new Notice(`Contex ${runtime.startupLabel} STT Server is ready.`);
-        }
-
-        return;
-      }
-
-      if (showNotice) {
-        new Notice(
-          `Contex ${runtime.startupLabel} STT Server is still starting. Use Contex: Check Local STT Server in a bit.`
-        );
-      }
+    window.setTimeout(() => {
+      void this.showLocalSttStartupStatus(runtime.startupLabel, showNotice);
     }, 6000);
+  }
+
+  private async showLocalSttStartupStatus(
+    startupLabel: string,
+    showNotice: boolean
+  ): Promise<void> {
+    if (await this.isLocalSttServerHealthy()) {
+      if (showNotice) {
+        new Notice(`Mindo ${startupLabel} STT Server is ready.`);
+      }
+
+      return;
+    }
+
+    if (showNotice) {
+      new Notice(
+        `Mindo ${startupLabel} STT Server is still starting. Use Mindo: Check Local STT Server in a bit.`
+      );
+    }
   }
 
   private async stopLocalSttServer(showNotice = true): Promise<void> {
@@ -869,16 +973,16 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex STT stop script.");
+        new Notice("Could not resolve Mindo STT stop script.");
       }
 
       return;
     }
 
-    const port = this.getLocalSttPort();
+    const port = getEndpointPort(this.settings.sttEndpoint, 9000);
 
     if (showNotice) {
-      new Notice(`Stopping Contex Local STT Server on port ${port}.`);
+      new Notice(`Stopping Mindo Local STT Server on port ${port}.`);
     }
 
     await this.runPowerShellScript(pluginDir, scriptPath, [
@@ -890,8 +994,8 @@ export default class ContexAgentPlugin extends Plugin {
       const isHealthy = await this.isLocalSttServerHealthy();
       new Notice(
         isHealthy
-          ? "Contex Local STT Server still appears to be responding."
-          : "Contex Local STT Server stopped."
+          ? "Mindo Local STT Server still appears to be responding."
+          : "Mindo Local STT Server stopped."
       );
     }
   }
@@ -899,7 +1003,7 @@ export default class ContexAgentPlugin extends Plugin {
   private async startLocalKokoroServer(showNotice = true): Promise<void> {
     if (await this.isLocalKokoroServerHealthy()) {
       if (showNotice) {
-        new Notice("Contex Local Kokoro JS TTS Server is already responding.");
+        new Notice("Mindo Local Kokoro JS TTS Server is already responding.");
       }
 
       return;
@@ -907,7 +1011,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (this.localKokoroProcess && this.localKokoroProcess.exitCode === null) {
       if (showNotice) {
-        new Notice("Contex Local Kokoro JS TTS Server is already starting.");
+        new Notice("Mindo Local Kokoro JS TTS Server is already starting.");
       }
 
       return;
@@ -920,13 +1024,13 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex Kokoro JS start script.");
+        new Notice("Could not resolve Mindo Kokoro JS start script.");
       }
 
       return;
     }
 
-    this.writeLocalKokoroLog("\n\n=== Starting Contex Local Kokoro JS TTS Server ===\n");
+    this.writeLocalKokoroLog("\n\n=== Starting Mindo Local Kokoro JS TTS Server ===\n");
     this.localKokoroProcess = spawn(
       "powershell.exe",
       [
@@ -938,7 +1042,7 @@ export default class ContexAgentPlugin extends Plugin {
       ],
       {
         cwd: pluginDir,
-        env: this.getLocalKokoroEnvironment(),
+        env: getLocalKokoroEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -948,30 +1052,36 @@ export default class ContexAgentPlugin extends Plugin {
       this.localKokoroProcess = null;
       const message = this.getErrorMessage(error);
       this.writeLocalKokoroLog(`\nProcess error: ${message}\n`);
-      new Notice(`Contex Local Kokoro JS TTS Server failed to start: ${message}`);
+      new Notice(`Mindo Local Kokoro JS TTS Server failed to start: ${message}`);
     });
 
     if (showNotice) {
       new Notice(
-        "Starting Contex Local Kokoro JS TTS Server. First English speech may download/load the ONNX model."
+        "Starting Mindo Local Kokoro JS TTS Server. First English speech may download/load the ONNX model."
       );
     }
 
-    window.setTimeout(async () => {
-      if (await this.isLocalKokoroServerHealthy()) {
-        if (showNotice) {
-          new Notice("Contex Local Kokoro JS TTS Server is ready.");
-        }
-
-        return;
-      }
-
-      if (showNotice) {
-        new Notice(
-          "Contex Local Kokoro JS TTS Server is still starting. Use Contex: Check Local Kokoro Server in a bit."
-        );
-      }
+    window.setTimeout(() => {
+      void this.showLocalKokoroStartupStatus(showNotice);
     }, 6000);
+  }
+
+  private async showLocalKokoroStartupStatus(
+    showNotice: boolean
+  ): Promise<void> {
+    if (await this.isLocalKokoroServerHealthy()) {
+      if (showNotice) {
+        new Notice("Mindo Local Kokoro JS TTS Server is ready.");
+      }
+
+      return;
+    }
+
+    if (showNotice) {
+      new Notice(
+        "Mindo Local Kokoro JS TTS Server is still starting. Use Mindo: Check Local Kokoro Server in a bit."
+      );
+    }
   }
 
   private async stopLocalKokoroServer(showNotice = true): Promise<void> {
@@ -987,7 +1097,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex Kokoro JS stop script.");
+        new Notice("Could not resolve Mindo Kokoro JS stop script.");
       }
 
       return;
@@ -995,15 +1105,15 @@ export default class ContexAgentPlugin extends Plugin {
 
     await this.runPowerShellScript(pluginDir, scriptPath, [
       "-Port",
-      String(this.getLocalKokoroPort())
+      String(getEndpointPort(this.settings.kokoroTtsEndpoint, 9200))
     ]);
 
     if (showNotice) {
       const isHealthy = await this.isLocalKokoroServerHealthy();
       new Notice(
         isHealthy
-          ? "Contex Local Kokoro JS TTS Server still appears to be responding."
-          : "Contex Local Kokoro JS TTS Server stopped."
+          ? "Mindo Local Kokoro JS TTS Server still appears to be responding."
+          : "Mindo Local Kokoro JS TTS Server stopped."
       );
     }
   }
@@ -1011,7 +1121,7 @@ export default class ContexAgentPlugin extends Plugin {
   private async startLocalSileroServer(showNotice = true): Promise<void> {
     if (await this.isLocalSileroServerHealthy()) {
       if (showNotice) {
-        new Notice("Contex Local Silero TTS Server is already responding.");
+        new Notice("Mindo Local Silero TTS Server is already responding.");
       }
 
       return;
@@ -1019,7 +1129,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (this.localSileroProcess && this.localSileroProcess.exitCode === null) {
       if (showNotice) {
-        new Notice("Contex Local Silero TTS Server is already starting.");
+        new Notice("Mindo Local Silero TTS Server is already starting.");
       }
 
       return;
@@ -1032,13 +1142,13 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex Silero start script.");
+        new Notice("Could not resolve Mindo Silero start script.");
       }
 
       return;
     }
 
-    this.writeLocalSileroLog("\n\n=== Starting Contex Local Silero TTS Server ===\n");
+    this.writeLocalSileroLog("\n\n=== Starting Mindo Local Silero TTS Server ===\n");
     this.localSileroProcess = spawn(
       "powershell.exe",
       [
@@ -1050,7 +1160,7 @@ export default class ContexAgentPlugin extends Plugin {
       ],
       {
         cwd: pluginDir,
-        env: this.getLocalSileroEnvironment(),
+        env: getLocalSileroEnvironment(this.settings),
         windowsHide: true,
         stdio: "ignore"
       }
@@ -1060,12 +1170,12 @@ export default class ContexAgentPlugin extends Plugin {
       this.localSileroProcess = null;
       const message = this.getErrorMessage(error);
       this.writeLocalSileroLog(`\nProcess error: ${message}\n`);
-      new Notice(`Contex Local Silero TTS Server failed to start: ${message}`);
+      new Notice(`Mindo Local Silero TTS Server failed to start: ${message}`);
     });
 
     if (showNotice) {
       new Notice(
-        "Starting Contex Local Silero TTS Server. First speech may download/load the selected Russian v5.5 model."
+        "Starting Mindo Local Silero TTS Server. First speech may download/load the selected Russian v5.5 model."
       );
     }
   }
@@ -1083,7 +1193,7 @@ export default class ContexAgentPlugin extends Plugin {
 
     if (!pluginDir || !scriptPath) {
       if (showNotice) {
-        new Notice("Could not resolve Contex Silero stop script.");
+        new Notice("Could not resolve Mindo Silero stop script.");
       }
 
       return;
@@ -1091,15 +1201,15 @@ export default class ContexAgentPlugin extends Plugin {
 
     await this.runPowerShellScript(pluginDir, scriptPath, [
       "-Port",
-      String(this.getLocalSileroPort())
+      String(getEndpointPort(this.settings.sileroTtsEndpoint, 9100))
     ]);
 
     if (showNotice) {
       const isHealthy = await this.isLocalSileroServerHealthy();
       new Notice(
         isHealthy
-          ? "Contex Local Silero TTS Server still appears to be responding."
-          : "Contex Local Silero TTS Server stopped."
+          ? "Mindo Local Silero TTS Server still appears to be responding."
+          : "Mindo Local Silero TTS Server stopped."
       );
     }
   }
@@ -1131,36 +1241,25 @@ export default class ContexAgentPlugin extends Plugin {
       return null;
     }
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 1500);
-
     try {
-      const response = await fetch(healthUrl, {
-        signal: controller.signal
+      const response = await requestUrl({
+        url: healthUrl,
+        method: "GET",
+        throw: false
       });
 
-      if (!response.ok) {
+      if (response.status < 200 || response.status >= 300) {
         return null;
       }
 
-      return (await response.json()) as SttHealthPayload;
+      return response.json as SttHealthPayload;
     } catch {
       return null;
-    } finally {
-      window.clearTimeout(timeout);
     }
   }
 
   private getLocalSttHealthUrl(): string | null {
-    try {
-      const url = new URL(this.settings.sttEndpoint);
-      url.pathname = "/health";
-      url.search = "";
-      url.hash = "";
-      return url.toString();
-    } catch {
-      return null;
-    }
+    return getEndpointHealthUrl(this.settings.sttEndpoint);
   }
 
   private async isLocalKokoroServerHealthy(): Promise<boolean> {
@@ -1170,46 +1269,21 @@ export default class ContexAgentPlugin extends Plugin {
       return false;
     }
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 2500);
-
     try {
-      const response = await fetch(healthUrl, {
-        signal: controller.signal
+      const response = await requestUrl({
+        url: healthUrl,
+        method: "GET",
+        throw: false
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch {
       return false;
-    } finally {
-      window.clearTimeout(timeout);
     }
   }
 
   private getLocalKokoroHealthUrl(): string | null {
-    try {
-      const url = new URL(this.settings.kokoroTtsEndpoint);
-      url.pathname = "/health";
-      url.search = "";
-      url.hash = "";
-      return url.toString();
-    } catch {
-      return null;
-    }
-  }
-
-  private getLocalKokoroPort(): number {
-    try {
-      const url = new URL(this.settings.kokoroTtsEndpoint);
-
-      if (url.port) {
-        return Number.parseInt(url.port, 10);
-      }
-
-      return url.protocol === "https:" ? 443 : 80;
-    } catch {
-      return 9200;
-    }
+    return getEndpointHealthUrl(this.settings.kokoroTtsEndpoint);
   }
 
   private async isLocalSileroServerHealthy(): Promise<boolean> {
@@ -1219,60 +1293,21 @@ export default class ContexAgentPlugin extends Plugin {
       return false;
     }
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 2500);
-
     try {
-      const response = await fetch(healthUrl, {
-        signal: controller.signal
+      const response = await requestUrl({
+        url: healthUrl,
+        method: "GET",
+        throw: false
       });
 
-      return response.ok;
+      return response.status >= 200 && response.status < 300;
     } catch {
       return false;
-    } finally {
-      window.clearTimeout(timeout);
     }
   }
 
   private getLocalSileroHealthUrl(): string | null {
-    try {
-      const url = new URL(this.settings.sileroTtsEndpoint);
-      url.pathname = "/health";
-      url.search = "";
-      url.hash = "";
-      return url.toString();
-    } catch {
-      return null;
-    }
-  }
-
-  private getLocalSileroPort(): number {
-    try {
-      const url = new URL(this.settings.sileroTtsEndpoint);
-
-      if (url.port) {
-        return Number.parseInt(url.port, 10);
-      }
-
-      return url.protocol === "https:" ? 443 : 80;
-    } catch {
-      return 9100;
-    }
-  }
-
-  private getLocalSttPort(): number {
-    try {
-      const url = new URL(this.settings.sttEndpoint);
-
-      if (url.port) {
-        return Number.parseInt(url.port, 10);
-      }
-
-      return url.protocol === "https:" ? 443 : 80;
-    } catch {
-      return 9000;
-    }
+    return getEndpointHealthUrl(this.settings.sileroTtsEndpoint);
   }
 
   private async runPowerShellScript(
@@ -1319,7 +1354,7 @@ export default class ContexAgentPlugin extends Plugin {
       mkdirSync(dirname(logPath), { recursive: true });
       appendFileSync(logPath, message);
     } catch (error) {
-      console.warn("[Contex STT] Could not write STT log", error);
+      console.warn("[Mindo STT] Could not write STT log", error);
     }
   }
 
@@ -1347,7 +1382,7 @@ export default class ContexAgentPlugin extends Plugin {
       mkdirSync(dirname(logPath), { recursive: true });
       appendFileSync(logPath, message);
     } catch (error) {
-      console.warn("[Contex Kokoro] Could not write Kokoro log", error);
+      console.warn("[Mindo Kokoro] Could not write Kokoro log", error);
     }
   }
 
@@ -1375,70 +1410,8 @@ export default class ContexAgentPlugin extends Plugin {
       mkdirSync(dirname(logPath), { recursive: true });
       appendFileSync(logPath, message);
     } catch (error) {
-      console.warn("[Contex Silero] Could not write Silero log", error);
+      console.warn("[Mindo Silero] Could not write Silero log", error);
     }
-  }
-
-  private getLocalKokoroEnvironment(): NodeJS.ProcessEnv {
-    return {
-      ...process.env,
-      CONTEX_KOKORO_JS_PORT: String(this.getLocalKokoroPort()),
-      CONTEX_KOKORO_MODEL:
-        this.settings.kokoroModel || DEFAULT_SETTINGS.kokoroModel,
-      CONTEX_KOKORO_VOICE:
-        this.settings.kokoroVoice || DEFAULT_SETTINGS.kokoroVoice
-    };
-  }
-
-  private getLocalSttEnvironment(): NodeJS.ProcessEnv {
-    const language = this.settings.sttLanguage.trim();
-
-    return {
-      ...process.env,
-      CONTEX_STT_BACKEND: this.settings.sttBackend,
-      CONTEX_STT_MODEL: this.settings.sttModel || DEFAULT_SETTINGS.sttModel,
-      CONTEX_STT_HOST: this.getLocalSttHost(),
-      CONTEX_STT_PORT: String(this.getLocalSttPort()),
-      CONTEX_STT_LANGUAGE:
-        language.toLowerCase() === "auto" ? "" : language,
-      CONTEX_STT_BEAM_SIZE: String(
-        getEffectiveSttBeamSize(
-          this.settings.sttQualityMode,
-          this.settings.sttBeamSize || DEFAULT_SETTINGS.sttBeamSize
-        )
-      ),
-      CONTEX_STT_INITIAL_PROMPT:
-        this.settings.sttInitialPrompt ||
-        DEFAULT_SETTINGS.sttInitialPrompt
-    };
-  }
-
-  private getLocalSttHost(): string {
-    try {
-      const url = new URL(this.settings.sttEndpoint);
-
-      return url.hostname || "127.0.0.1";
-    } catch {
-      return "127.0.0.1";
-    }
-  }
-
-  private getLocalSileroEnvironment(): NodeJS.ProcessEnv {
-    const voice = this.getConfiguredLocalSileroVoiceName();
-
-    return {
-      ...process.env,
-      CONTEX_SILERO_VOICE: voice,
-      CONTEX_SILERO_PORT: String(this.getLocalSileroPort())
-    };
-  }
-
-  private getConfiguredLocalSileroVoiceName(): string {
-    const voice = (
-      this.settings.sileroVoice || DEFAULT_SILERO_VOICE
-    ).trim();
-
-    return SUPPORTED_SILERO_VOICES.has(voice) ? voice : DEFAULT_SILERO_VOICE;
   }
 
   private getErrorMessage(error: unknown): string {
@@ -1448,6 +1421,25 @@ export default class ContexAgentPlugin extends Plugin {
 
     return String(error);
   }
+}
+
+function getResponseHeader(
+  headers: Record<string, string> | undefined,
+  name: string
+): string {
+  if (!headers) {
+    return "";
+  }
+
+  const lowerName = name.toLowerCase();
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === lowerName) {
+      return value;
+    }
+  }
+
+  return "";
 }
 
 function sleep(durationMs: number): Promise<void> {

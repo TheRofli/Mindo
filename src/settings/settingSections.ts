@@ -1,4 +1,9 @@
-export type ContexSettingsSectionId = "model" | "voice" | "web" | "wiki";
+export type ContexSettingsSectionId =
+  | "model"
+  | "dialogue"
+  | "voice"
+  | "web"
+  | "wiki";
 
 export interface ContexSettingsSection {
   id: ContexSettingsSectionId;
@@ -9,6 +14,10 @@ export const CONTEX_SETTINGS_SECTIONS: ContexSettingsSection[] = [
   {
     id: "model",
     label: "Model"
+  },
+  {
+    id: "dialogue",
+    label: "Dialogue"
   },
   {
     id: "voice",

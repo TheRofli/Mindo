@@ -15,7 +15,9 @@ const vaultPaths = [
   "Obsidian/Фишки obsidian.md",
   "Obsidian/Фишки markdown.md",
   "Proton/LLM Engineering.md",
-  "Proton/qquark-app.md"
+  "Proton/qquark-app.md",
+  "Proton/Qore Systems Cases.md",
+  "Proton/Qore Systems Strategy.md"
 ];
 
 const openTargets = [
@@ -102,6 +104,12 @@ const englishOpen = rankOpenFilePathCandidates(
   "open LLM Engineering inside the folder Proton"
 );
 assert.equal(englishOpen[0]?.path, "Proton/LLM Engineering.md");
+
+const englishStrategyOpen = rankOpenFilePathCandidates(
+  vaultPaths,
+  "open qore systems strategy in folder Proton"
+);
+assert.equal(englishStrategyOpen[0]?.path, "Proton/Qore Systems Strategy.md");
 
 assert.equal(
   preserveExplicitFolder(

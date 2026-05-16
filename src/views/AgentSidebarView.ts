@@ -2,7 +2,6 @@ import {
   ItemView,
   MarkdownView,
   MarkdownRenderer,
-  Menu,
   Notice,
   normalizePath,
   setIcon,
@@ -16,6 +15,7 @@ import {
 import { getSelectedTextContext } from "../context/selectedTextContext";
 import {
   requestLlmChatCompletion,
+  requestLlmSystemCompletion,
   streamLlmChatCompletion
 } from "../llm/llmClient";
 import {
@@ -46,11 +46,7 @@ import {
   getDiffPrefix
 } from "../diff/lineDiff";
 import {
-  NOTE_ACTIONS,
   SELECTED_TEXT_ACTIONS,
-  getActionDescription,
-  getNoteActionId,
-  getSuggestionTitle,
   type NoteAction
 } from "./noteActions";
 import {
@@ -82,19 +78,27 @@ import {
   type LiveDialogueAcknowledgementKind
 } from "../voice/liveDialogue";
 import {
+  buildLiveDialogueRoutingSystemPrompt,
+  buildLiveDialogueRoutingUserPrompt,
+  fallbackLiveDialogueRoute,
+  parseLiveDialogueRouteDecision
+} from "../voice/liveDialogueRouting";
+import {
   getLiveDialogueFallbackText,
   getLiveDialogueLatestAssistantText,
   getLiveDialogueLatestUserText,
   getLiveDialogueOrbTitle,
   getLiveDialoguePhaseLabel,
   getLiveDialogueSurfaceState,
-  type LiveDialoguePhase
+  type LiveDialoguePhase,
+  type LiveDialogueTranscriptItem
 } from "../voice/liveDialogueSurface";
 import {
   buildLiveTranscriptValue,
   getSpeechRecognitionLanguage,
   shouldUseFinalTranscription
 } from "../voice/liveTranscript";
+import { getBestTranscribedText as resolveBestTranscribedText } from "../voice/transcribedTextResolver";
 import {
   StreamingSpeechQueue,
   warmStreamingSpeechAudioContext
@@ -116,7 +120,6 @@ import {
   stripHiddenTtsHints
 } from "../voice/speechText";
 import {
-  getActionText,
   getUiLanguageFromObsidianApp,
   getUiText,
   type UiTextKey
@@ -140,6 +143,7 @@ import {
   renameClipboardFile
 } from "../attachments/fileAttachmentUtils";
 import { renderMessageAttachments } from "../attachments/attachmentDisplay";
+import { formatChatMessageRoleLabel } from "./chatViewRenderer";
 import { buildTextReplacementDiffPreview } from "../diff/diffService";
 import {
   escapeMarkdownLinkText,
@@ -148,6 +152,7 @@ import {
   serializeChatMessagesForNote,
   trimChatTitle
 } from "../chat/chatMessages";
+import { isVaultLocalDescriptionRequest } from "../chat/autoWebGuards";
 import { buildToolRouterPrompt } from "../router/toolRouterPrompt";
 import { collectVaultCandidates } from "../router/vaultCandidates";
 import { planContextWorkflow } from "../web/workflowPlanner";
@@ -179,6 +184,7 @@ import {
   buildPromptImprovementMessages,
   cleanImprovedPrompt
 } from "../prompt/promptImprover";
+import { applyModelProfile } from "../settings/modelProfiles";
 import { AttachmentController } from "./controllers/AttachmentController";
 import { ChatController } from "./controllers/ChatController";
 import { DiffController } from "./controllers/DiffController";
@@ -239,6 +245,7 @@ import {
   type ActionReceipt,
   type ChatSession,
   type ChatMessage,
+  type ContexSettings,
   type CurrentNoteContext,
   type LlmRequestContext,
   type LlmFileAttachment,
@@ -260,8 +267,11 @@ const MAX_RESEARCH_NOTE_SOURCE_CHARS = 12000;
 const MAX_ATTACHED_TEXT_CHARS = 12000;
 const MAX_ATTACHED_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_ATTACHED_PDF_BYTES = 10 * 1024 * 1024;
-const PROJECT_MEMORY_FOLDER = "Contex Memory";
-const PROJECT_RESEARCH_FOLDER = "Contex Research";
+const CONTEXT_METER_TOKEN_BUDGET = 32000;
+const CONTEXT_METER_RESERVED_TOKENS = 2500;
+const CONTEXT_METER_CHARS_PER_TOKEN = 4;
+const PROJECT_MEMORY_FOLDER = "Mindo Memory";
+const PROJECT_RESEARCH_FOLDER = "Mindo Research";
 
 export class ContexAgentView extends ItemView {
   private plugin: ContexAgentPlugin;
@@ -272,9 +282,16 @@ export class ContexAgentView extends ItemView {
   private modelMenuEl: HTMLElement | null = null;
   private chatMenuButtonEl: HTMLButtonElement | null = null;
   private chatMenuEl: HTMLElement | null = null;
+  private contexCodeMenuEl: HTMLElement | null = null;
+  private moreActionsMenuEl: HTMLElement | null = null;
+  private activeActionMenuEl: HTMLElement | null = null;
   private suggestionsEl: HTMLElement | null = null;
+  private contextMeterEl: HTMLButtonElement | null = null;
+  private contextMeterValueEl: HTMLElement | null = null;
+  private autoApplyToggleEl: HTMLButtonElement | null = null;
+  private autoApplyToggleLabelEl: HTMLElement | null = null;
+  private modelPickerEl: HTMLElement | null = null;
   private modelButtonEl: HTMLButtonElement | null = null;
-  private modelProfileManageButtonEl: HTMLButtonElement | null = null;
   private currentNotePillTextEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
   private sttStatusEl: HTMLElement | null = null;
@@ -368,8 +385,12 @@ export class ContexAgentView extends ItemView {
   private streamingMessageId: string | null = null;
   private activeRefineMessageId: string | null = null;
   private renderSequence = 0;
+  private liveDialogueTranscriptRenderSequence = 0;
   private renderTimer: number | null = null;
   private chatPersistTimer: number | null = null;
+  private chatMenuCloseTimer: number | null = null;
+  private modelMenuCloseTimer: number | null = null;
+  private actionMenuCloseTimer: number | null = null;
   private selectionToolbarTimer: number | null = null;
   private shouldAutoScrollChat = true;
   private renderedUiLanguage: string | null = null;
@@ -396,7 +417,7 @@ export class ContexAgentView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Contex Agent";
+    return "Mindo";
   }
 
   getIcon(): string {
@@ -415,6 +436,45 @@ export class ContexAgentView extends ItemView {
     const pluginDir = this.plugin.manifest.dir ?? ".obsidian/plugins/contex-agent";
     const vaultPath = normalizePath(`${pluginDir}/${fileName}`);
     return this.app.vault.adapter.getResourcePath(vaultPath);
+  }
+
+  private installRuntimeComfortaaFont(root: HTMLElement): void {
+    const fontResourcePath = this.getPluginAssetResourcePath(
+      "assets/fonts/comfortaa/Comfortaa-Regular.ttf"
+    );
+    root.style.setProperty(
+      "--mindo-font-family",
+      '"Mindo Runtime Comfortaa", "Mindo Comfortaa", var(--font-interface)'
+    );
+
+    const styleEl = root.createEl("style", {
+      attr: {
+        type: "text/css"
+      }
+    });
+    styleEl.setText(
+      [
+        "@font-face {",
+        '  font-family: "Mindo Runtime Comfortaa";',
+        `  src: url(${JSON.stringify(fontResourcePath)}) format("truetype");`,
+        "  font-style: normal;",
+        "  font-weight: 400 700;",
+        "  font-display: swap;",
+        "}"
+      ].join("\n")
+    );
+  }
+
+  private createMindoLogoImage(parentEl: HTMLElement, className: string): HTMLImageElement {
+    return parentEl.createEl("img", {
+      cls: className,
+      attr: {
+        src: this.getPluginAssetResourcePath("assets/logo.png"),
+        alt: "",
+        "aria-hidden": "true",
+        draggable: "false"
+      }
+    });
   }
 
   async onOpen(): Promise<void> {
@@ -470,6 +530,9 @@ export class ContexAgentView extends ItemView {
   async onClose(): Promise<void> {
     this.stopSpeaking();
     this.stopRecording("discard");
+    this.closeModelMenu();
+    this.closeChatMenu();
+    this.closeActionMenus();
 
     if (this.renderTimer !== null) {
       window.clearTimeout(this.renderTimer);
@@ -505,9 +568,16 @@ export class ContexAgentView extends ItemView {
       return;
     }
     this.renderedUiLanguage = uiLanguage;
+    this.applyFontMode();
 
-    this.modelEl.setText(this.modelProfileController.getActive(this.plugin.settings).name);
+    const activeProfile = this.modelProfileController.getActive(this.plugin.settings);
+    this.modelEl.setText(this.getCompactModelProfileLabel(activeProfile));
+    this.modelButtonEl?.setAttribute(
+      "title",
+      `${activeProfile.name} | ${activeProfile.model}`
+    );
     this.refreshModelMenu();
+    this.refreshAutoApplyToggle();
     this.visionEl?.setText(
       `Vision: ${this.plugin.settings.supportsVision ? "enabled" : "disabled"}`
     );
@@ -525,14 +595,14 @@ export class ContexAgentView extends ItemView {
 
   async rememberCurrentNote(): Promise<void> {
     await this.createNoteFromCurrentNote({
-      fallbackFolder: "Contex Memory",
+      fallbackFolder: "Mindo Memory",
       modalTitle: "Create Memory Note",
       statusText: "Status: Drafting memory",
       userPrompt: "Remember current note",
       promptLines: [
         "Turn the current Markdown note into a durable memory note.",
         "Return JSON only with this shape:",
-        '{"title":"...","path":"Contex Memory/... .md","content":"..."}',
+        '{"title":"...","path":"Mindo Memory/... .md","content":"..."}',
         "Keep important decisions, constraints, names, technical terms, and next actions.",
         "Do not include code fences or hidden TTS comments."
       ]
@@ -572,6 +642,7 @@ export class ContexAgentView extends ItemView {
     const attachedFiles = this.attachedFiles.length
       ? [...this.attachedFiles]
       : null;
+    let autoApplyMessageId: string | null = null;
 
     try {
       const currentNoteContext = {
@@ -666,6 +737,7 @@ export class ContexAgentView extends ItemView {
       this.messages.push(userMessage, assistantMessage);
       this.statusEl?.setText("Status: Preview ready");
       void this.showInlineDiffForMessage(assistantMessage.id);
+      autoApplyMessageId = assistantMessage.id;
     } catch (error) {
       this.setError(this.getErrorMessage(error));
       this.statusEl?.setText("Status: Update failed");
@@ -677,19 +749,22 @@ export class ContexAgentView extends ItemView {
 
       this.setLoading(false);
       void this.renderMessages();
+      if (autoApplyMessageId) {
+        this.queueAutoApplyDiffPreview(autoApplyMessageId);
+      }
     }
   }
 
   async createRoadmapFromCurrentNote(): Promise<void> {
     await this.createNoteFromCurrentNote({
-      fallbackFolder: "Contex Roadmaps",
+      fallbackFolder: "Mindo Roadmaps",
       modalTitle: "Create Roadmap Note",
       statusText: "Status: Drafting roadmap",
       userPrompt: "Create roadmap from current note",
       promptLines: [
         "Create a practical roadmap note from the current Markdown note.",
         "Return JSON only with this shape:",
-        '{"title":"...","path":"Contex Roadmaps/... .md","content":"..."}',
+        '{"title":"...","path":"Mindo Roadmaps/... .md","content":"..."}',
         "Use clear milestones, concrete tasks, risks, dependencies, and next actions.",
         "Do not include code fences or hidden TTS comments."
       ]
@@ -710,8 +785,8 @@ export class ContexAgentView extends ItemView {
     }
 
     const sourceContext: SelectedTextContext = {
-      path: "Contex Agent Chat",
-      name: "Contex Agent Chat",
+      path: "Mindo Chat",
+      name: "Mindo Chat",
       text: chatText,
       isTruncated: false,
       originalLength: chatText.length,
@@ -730,8 +805,8 @@ export class ContexAgentView extends ItemView {
           content: [
             "Turn this chat conversation into a useful Markdown note.",
             "Return JSON only with this shape:",
-            '{"title":"...","path":"Contex Chats/... .md","content":"..."}',
-            "Use a concise title. Put the note under Contex Chats.",
+            '{"title":"...","path":"Mindo Chats/... .md","content":"..."}',
+            "Use a concise title. Put the note under Mindo Chats.",
             "Keep decisions, useful context, tasks, links, file paths, and open questions.",
             "Do not include code fences or hidden TTS comments.",
             "",
@@ -743,7 +818,7 @@ export class ContexAgentView extends ItemView {
       ]);
       const proposal = await this.prepareCreateNoteProposal(
         proposalText,
-        "Contex Chats"
+        "Mindo Chats"
       );
 
       new CreateNoteModal(this.app, {
@@ -772,11 +847,11 @@ export class ContexAgentView extends ItemView {
       });
       this.statusEl?.setText("Status: Ready");
     } catch (error) {
-      const title = trimChatTitle(this.messages[0]?.content ?? "Contex chat");
+      const title = trimChatTitle(this.messages[0]?.content ?? "Mindo chat");
       const proposal: CreateNoteProposal = {
         path: await getUniqueNotePath(
           this.app,
-          `Contex Chats/${slugifyTitle(title)}.md`
+          `Mindo Chats/${slugifyTitle(title)}.md`
         ),
         content: chatText
       };
@@ -884,23 +959,21 @@ export class ContexAgentView extends ItemView {
 
     const root = container.createDiv({ cls: "contex-agent" });
     this.rootEl = root;
+    this.installRuntimeComfortaaFont(root);
+    this.applyFontMode();
     this.refreshConversationChrome();
     const header = root.createDiv({ cls: "contex-agent__header" });
-    const headerTop = header.createDiv({ cls: "contex-agent__header-top" });
-    const brandEl = headerTop.createDiv({ cls: "contex-agent__brand" });
-    brandEl.createEl("img", {
-      cls: "contex-agent__logo contex-agent__logo--light",
+    const topBrand = header.createDiv({ cls: "contex-agent__top-brand" });
+    topBrand.createEl("img", {
+      cls: "contex-agent__top-brand-logo",
       attr: {
-        src: this.getPluginAssetResourcePath("contex_black.png"),
-        alt: this.t("appName")
+        src: this.getPluginAssetResourcePath("assets/logo.png"),
+        alt: ""
       }
     });
-    brandEl.createEl("img", {
-      cls: "contex-agent__logo contex-agent__logo--dark",
-      attr: {
-        src: this.getPluginAssetResourcePath("contex_white.png"),
-        alt: this.t("appName")
-      }
+    topBrand.createSpan({
+      cls: "contex-agent__top-brand-text",
+      text: this.t("appName")
     });
 
     const meta = header.createDiv({ cls: "contex-agent__meta" });
@@ -934,15 +1007,12 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__live-orb",
       attr: {
         type: "button",
-        title: this.t("startLiveDialogue"),
         "aria-label": this.t("startLiveDialogue")
       }
     });
-    setIcon(
-      this.liveDialogueOrbEl.createSpan({
-        cls: "contex-agent__live-orb-icon"
-      }),
-      "sparkle"
+    this.createMindoLogoImage(
+      this.liveDialogueOrbEl,
+      "contex-agent__live-orb-logo"
     );
     this.liveDialogueOrbEl.addEventListener("click", () => {
       void this.toggleLiveDialogueTurn();
@@ -1041,19 +1111,28 @@ export class ContexAgentView extends ItemView {
     this.inputEl.addEventListener("paste", (event) => {
       void this.handlePaste(event);
     });
+    this.inputEl.addEventListener("input", () => {
+      this.refreshContextMeter();
+    });
 
     const actions = promptBox.createDiv({ cls: "contex-agent__actions" });
-    const modelButton = actions.createEl("button", {
+    const modelPicker = actions.createDiv({
+      cls: "contex-agent__model-picker"
+    });
+    this.modelPickerEl = modelPicker;
+
+    const modelButton = modelPicker.createEl("button", {
       cls: "contex-agent__model-button",
       attr: {
         type: "button",
-        title: this.t("modelProfiles"),
         "aria-label": this.t("modelProfiles")
       }
     });
     this.modelButtonEl = modelButton;
     this.modelEl = modelButton.createSpan({
-      text: this.modelProfileController.getActive(this.plugin.settings).name
+      text: this.getCompactModelProfileLabel(
+        this.modelProfileController.getActive(this.plugin.settings)
+      )
     });
     modelButton.createSpan({
       cls: "contex-agent__model-status-dot",
@@ -1062,43 +1141,57 @@ export class ContexAgentView extends ItemView {
       }
     });
     setIcon(modelButton.createSpan(), "chevron-down");
-    modelButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.toggleModelMenu();
+    modelPicker.addEventListener("mouseenter", () => {
+      this.showModelMenu();
     });
-    this.renderModelMenu(promptBox);
+    modelPicker.addEventListener("mouseleave", () => {
+      this.scheduleCloseModelMenu();
+    });
+    modelPicker.addEventListener("focusin", () => {
+      this.showModelMenu();
+    });
+    modelPicker.addEventListener("focusout", (event) => {
+      const nextTarget = event.relatedTarget;
+
+      if (nextTarget instanceof Node && modelPicker.contains(nextTarget)) {
+        return;
+      }
+
+      this.scheduleCloseModelMenu();
+    });
+    modelButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.showModelMenu();
+    });
+    this.renderModelMenu(modelPicker);
     this.registerDomEvent(document, "click", (event) => {
       const target = event.target;
 
       if (
         target instanceof Node &&
-        !modelButton.contains(target) &&
-        !this.modelMenuEl?.contains(target)
+        !modelPicker.contains(target)
       ) {
         this.closeModelMenu();
       }
     });
 
-    const manageProfilesButton = actions.createEl("button", {
-      cls: "contex-agent__icon-button contex-agent__model-profile-manage",
+    this.contextMeterEl = actions.createEl("button", {
+      cls: "contex-agent__context-meter",
       attr: {
         type: "button",
-        title: this.t("manageModelProfiles"),
-        "aria-label": this.t("manageModelProfiles")
+        "aria-label": "Approximate context usage"
       }
     });
-    this.modelProfileManageButtonEl = manageProfilesButton;
-    setIcon(manageProfilesButton, "plus");
-    manageProfilesButton.addEventListener("click", () => {
-      this.closeModelMenu();
-      new ModelProfilesModal(this.app, {
-        settings: this.plugin.settings,
-        onSave: async (settings) => {
-          this.plugin.settings = settings;
-          await this.plugin.saveSettings();
-          this.refreshSettings();
-        }
-      }).open();
+    this.contextMeterEl.createSpan({
+      cls: "contex-agent__context-meter-arc",
+      attr: {
+        "aria-hidden": "true"
+      }
+    });
+    this.contextMeterValueEl = this.contextMeterEl.createSpan({
+      cls: "contex-agent__context-meter-value",
+      text: "0%"
     });
 
     this.voiceWaveformEl = actions.createDiv({
@@ -1123,7 +1216,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button contex-agent__icon-button--ghost",
       attr: {
         type: "button",
-        title: this.t("attachFiles"),
         "aria-label": this.t("attachFiles")
       }
     });
@@ -1137,11 +1229,13 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button contex-agent__live-dialogue-button",
       attr: {
         type: "button",
-        title: this.t("startLiveDialogue"),
         "aria-label": this.t("startLiveDialogue")
       }
     });
-    setIcon(this.liveDialogueButtonEl, "sparkle");
+    this.createMindoLogoImage(
+      this.liveDialogueButtonEl,
+      "contex-agent__live-dialogue-logo"
+    );
     this.liveDialogueButtonEl.addEventListener("click", () => {
       void this.toggleLiveDialogueTurn();
     });
@@ -1155,7 +1249,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("recordVoice"),
         "aria-label": this.t("recordVoice")
       }
     });
@@ -1164,11 +1257,31 @@ export class ContexAgentView extends ItemView {
       void this.toggleRecording();
     });
 
+    this.autoApplyToggleEl = actions.createEl("button", {
+      cls: "contex-agent__auto-apply-toggle",
+      attr: {
+        type: "button",
+        role: "switch",
+        "aria-label": "Auto apply edit previews"
+      }
+    });
+    this.autoApplyToggleLabelEl = this.autoApplyToggleEl.createSpan({
+      cls: "contex-agent__auto-apply-label"
+    });
+    this.autoApplyToggleEl.createSpan({
+      cls: "contex-agent__auto-apply-knob",
+      attr: {
+        "aria-hidden": "true"
+      }
+    });
+    this.autoApplyToggleEl.addEventListener("click", () => {
+      void this.toggleAutoApplyEdits();
+    });
+
     this.sendButtonEl = actions.createEl("button", {
       cls: "contex-agent__send-button",
       attr: {
         type: "button",
-        title: this.t("send"),
         "aria-label": this.t("send")
       }
     });
@@ -1192,6 +1305,8 @@ export class ContexAgentView extends ItemView {
     });
 
     this.refreshLiveDialogueSurface();
+    this.refreshContextMeter();
+    this.refreshAutoApplyToggle();
   }
 
   private ensureChatSession(): void {
@@ -1300,6 +1415,24 @@ export class ContexAgentView extends ItemView {
     const pickerEl = switcherEl.createDiv({
       cls: "contex-agent__chat-picker"
     });
+    pickerEl.addEventListener("mouseenter", () => {
+      this.showChatMenu();
+    });
+    pickerEl.addEventListener("mouseleave", () => {
+      this.scheduleCloseChatMenu();
+    });
+    pickerEl.addEventListener("focusin", () => {
+      this.showChatMenu();
+    });
+    pickerEl.addEventListener("focusout", (event) => {
+      const nextTarget = event.relatedTarget;
+
+      if (nextTarget instanceof Node && pickerEl.contains(nextTarget)) {
+        return;
+      }
+
+      this.scheduleCloseChatMenu();
+    });
     this.chatMenuButtonEl = pickerEl.createEl("button", {
       cls: "contex-agent__chat-menu-button",
       attr: {
@@ -1308,13 +1441,20 @@ export class ContexAgentView extends ItemView {
       }
     });
     this.chatMenuButtonEl.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
-      this.toggleChatMenu();
+      this.showChatMenu();
     });
     this.chatMenuEl = pickerEl.createDiv({
       cls: "contex-agent__chat-menu"
     });
     this.chatMenuEl.style.display = "none";
+    this.chatMenuEl.addEventListener("mouseenter", () => {
+      this.cancelScheduledChatMenuClose();
+    });
+    this.chatMenuEl.addEventListener("mouseleave", () => {
+      this.scheduleCloseChatMenu();
+    });
 
     this.registerDomEvent(document, "click", (event) => {
       const target = event.target;
@@ -1328,7 +1468,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("newChat"),
         "aria-label": this.t("newChat")
       }
     });
@@ -1341,7 +1480,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("clearCurrentChat"),
         "aria-label": this.t("clearCurrentChat")
       }
     });
@@ -1354,7 +1492,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("changeHistory"),
         "aria-label": this.t("changeHistory")
       }
     });
@@ -1363,119 +1500,134 @@ export class ContexAgentView extends ItemView {
       new HistoryModal(this.app).open();
     });
 
-    const contexCodeButton = switcherEl.createEl("button", {
+    const contexCodePicker = switcherEl.createDiv({
+      cls: "contex-agent__hover-action-picker"
+    });
+    const contexCodeButton = contexCodePicker.createEl("button", {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("contexCode"),
         "aria-label": this.t("contexCode")
       }
     });
     setIcon(contexCodeButton, "list-todo");
-    contexCodeButton.addEventListener("click", (event) => {
-      this.showContexCodeMenu(event);
-    });
+    this.contexCodeMenuEl = this.renderHoverActionMenu(contexCodePicker, [
+      {
+        icon: "map",
+        label: this.t("createCodePlan"),
+        action: () => {
+          void this.createContexCodePlan();
+        }
+      },
+      {
+        icon: "package",
+        label: this.t("prepareCodeTaskPacket"),
+        action: () => {
+          void this.prepareContexCodeTaskPacket();
+        }
+      },
+      {
+        icon: "check-circle",
+        label: this.t("markCodeTaskDone"),
+        action: () => {
+          void this.markContexCodeTaskDone();
+        }
+      },
+      {
+        icon: "refresh-cw",
+        label: this.t("syncCodePlan"),
+        action: () => {
+          void this.syncContexCodePlan();
+        }
+      }
+    ]);
+    this.bindHoverActionMenu(
+      contexCodePicker,
+      contexCodeButton,
+      this.contexCodeMenuEl
+    );
 
-    const moreButton = switcherEl.createEl("button", {
+    const morePicker = switcherEl.createDiv({
+      cls: "contex-agent__hover-action-picker"
+    });
+    const moreButton = morePicker.createEl("button", {
       cls: "contex-agent__icon-button",
       attr: {
         type: "button",
-        title: this.t("moreActions"),
         "aria-label": this.t("moreActions")
       }
     });
     setIcon(moreButton, "more-horizontal");
-    moreButton.addEventListener("click", (event) => {
-      const menu = new Menu();
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("improvePrompt"))
-          .setIcon("wand-sparkles")
-          .onClick(() => {
-            void this.improveCurrentPrompt();
-          });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("turnChatIntoNote"))
-          .setIcon("file-plus-2")
-          .onClick(() => {
-            void this.saveCurrentChatAsNote();
-          });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("researchWeb"))
-          .setIcon("globe")
-          .onClick(() => {
-            this.focusWebResearch();
-          });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("semanticVaultSearch"))
-          .setIcon("brain")
-          .onClick(() => {
-            this.focusSemanticVaultSearch();
-          });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("checkHealth"))
-          .setIcon("refresh-cw")
-          .onClick(() => {
-            void this.checkSystemHealth();
-          });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle(this.t("diagnostics"))
-          .setIcon("activity")
-          .onClick(() => {
-            void this.plugin.openDoctor();
-          });
-      });
-      menu.showAtMouseEvent(event);
+    this.moreActionsMenuEl = this.renderHoverActionMenu(morePicker, [
+      {
+        icon: "sparkles",
+        label: this.t("improvePrompt"),
+        action: () => {
+          void this.improveCurrentPrompt();
+        }
+      },
+      {
+        icon: "file-text",
+        label: this.t("turnChatIntoNote"),
+        action: () => {
+          void this.saveCurrentChatAsNote();
+        }
+      },
+      {
+        icon: "globe",
+        label: this.t("researchWeb"),
+        action: () => {
+          this.focusWebResearch();
+        }
+      },
+      {
+        icon: "search",
+        label: this.t("semanticVaultSearch"),
+        action: () => {
+          this.focusSemanticVaultSearch();
+        }
+      },
+      {
+        icon: "sliders-horizontal",
+        label: this.t("manageModelProfiles"),
+        action: () => {
+          this.openModelProfilesModal();
+        }
+      },
+      {
+        icon: "heart-pulse",
+        label: this.t("checkHealth"),
+        action: () => {
+          void this.checkSystemHealth();
+        }
+      },
+      {
+        icon: "wrench",
+        label: this.t("diagnostics"),
+        action: () => {
+          void this.plugin.openDoctor();
+        }
+      }
+    ]);
+    this.bindHoverActionMenu(
+      morePicker,
+      moreButton,
+      this.moreActionsMenuEl
+    );
+
+    this.registerDomEvent(document, "click", (event) => {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        !contexCodePicker.contains(target) &&
+        !morePicker.contains(target)
+      ) {
+        this.closeActionMenus();
+      }
     });
 
     this.refreshChatSelect();
-  }
-
-  private showContexCodeMenu(event: MouseEvent): void {
-    const menu = new Menu();
-    menu.addItem((item) => {
-      item
-        .setTitle(this.t("createCodePlan"))
-        .setIcon("list-todo")
-        .onClick(() => {
-          void this.createContexCodePlan();
-        });
-    });
-    menu.addItem((item) => {
-      item
-        .setTitle(this.t("prepareCodeTaskPacket"))
-        .setIcon("clipboard-list")
-        .onClick(() => {
-          void this.prepareContexCodeTaskPacket();
-        });
-    });
-    menu.addItem((item) => {
-      item
-        .setTitle(this.t("markCodeTaskDone"))
-        .setIcon("check-check")
-        .onClick(() => {
-          void this.markContexCodeTaskDone();
-        });
-    });
-    menu.addItem((item) => {
-      item
-        .setTitle(this.t("syncCodePlan"))
-        .setIcon("refresh-cw")
-        .onClick(() => {
-          void this.syncContexCodePlan();
-        });
-    });
-    menu.showAtMouseEvent(event);
   }
 
   private refreshChatSelect(): void {
@@ -1519,13 +1671,157 @@ export class ContexAgentView extends ItemView {
     }
 
     const isOpen = this.chatMenuEl.style.display !== "none";
-    this.chatMenuEl.style.display = isOpen ? "none" : "block";
+    if (isOpen) {
+      this.closeChatMenu();
+      return;
+    }
+
+    this.showChatMenu();
+  }
+
+  private showChatMenu(): void {
+    if (!this.chatMenuEl) {
+      return;
+    }
+
+    this.cancelScheduledChatMenuClose();
+    this.closeModelMenu();
+    this.closeActionMenus();
+    this.chatMenuEl.style.display = "block";
+  }
+
+  private scheduleCloseChatMenu(): void {
+    this.cancelScheduledChatMenuClose();
+    this.chatMenuCloseTimer = window.setTimeout(() => {
+      this.closeChatMenu();
+    }, 260);
+  }
+
+  private cancelScheduledChatMenuClose(): void {
+    if (this.chatMenuCloseTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(this.chatMenuCloseTimer);
+    this.chatMenuCloseTimer = null;
   }
 
   private closeChatMenu(): void {
+    this.cancelScheduledChatMenuClose();
     if (this.chatMenuEl) {
       this.chatMenuEl.style.display = "none";
     }
+  }
+
+  private renderHoverActionMenu(
+    parentEl: HTMLElement,
+    items: Array<{ icon: string; label: string; action: () => void }>
+  ): HTMLElement {
+    const menuEl = parentEl.createDiv({
+      cls: "contex-agent__action-menu"
+    });
+    menuEl.style.display = "none";
+
+    items.forEach((item) => {
+      const itemEl = menuEl.createEl("button", {
+        cls: "contex-agent__action-menu-item",
+        attr: {
+          type: "button"
+        }
+      });
+      const iconEl = itemEl.createSpan({
+        cls: "contex-agent__action-menu-item-icon",
+        attr: {
+          "aria-hidden": "true"
+        }
+      });
+      setIcon(iconEl, item.icon);
+      itemEl.createSpan({
+        cls: "contex-agent__action-menu-item-label",
+        text: item.label
+      });
+
+      itemEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeActionMenus();
+        item.action();
+      });
+    });
+
+    return menuEl;
+  }
+
+  private bindHoverActionMenu(
+    pickerEl: HTMLElement,
+    buttonEl: HTMLButtonElement,
+    menuEl: HTMLElement
+  ): void {
+    pickerEl.addEventListener("mouseenter", () => {
+      this.showActionMenu(menuEl);
+    });
+    pickerEl.addEventListener("mouseleave", () => {
+      this.scheduleCloseActionMenu();
+    });
+    pickerEl.addEventListener("focusin", () => {
+      this.showActionMenu(menuEl);
+    });
+    pickerEl.addEventListener("focusout", (event) => {
+      const nextTarget = event.relatedTarget;
+
+      if (nextTarget instanceof Node && pickerEl.contains(nextTarget)) {
+        return;
+      }
+
+      this.scheduleCloseActionMenu();
+    });
+    buttonEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.showActionMenu(menuEl);
+    });
+    menuEl.addEventListener("mouseenter", () => {
+      this.cancelScheduledActionMenuClose();
+    });
+    menuEl.addEventListener("mouseleave", () => {
+      this.scheduleCloseActionMenu();
+    });
+  }
+
+  private showActionMenu(menuEl: HTMLElement): void {
+    this.cancelScheduledActionMenuClose();
+    this.closeChatMenu();
+    this.closeModelMenu();
+
+    if (this.activeActionMenuEl && this.activeActionMenuEl !== menuEl) {
+      this.activeActionMenuEl.style.display = "none";
+    }
+
+    this.activeActionMenuEl = menuEl;
+    menuEl.style.display = "block";
+  }
+
+  private scheduleCloseActionMenu(): void {
+    this.cancelScheduledActionMenuClose();
+    this.actionMenuCloseTimer = window.setTimeout(() => {
+      this.closeActionMenus();
+    }, 260);
+  }
+
+  private cancelScheduledActionMenuClose(): void {
+    if (this.actionMenuCloseTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(this.actionMenuCloseTimer);
+    this.actionMenuCloseTimer = null;
+  }
+
+  private closeActionMenus(): void {
+    this.cancelScheduledActionMenuClose();
+    this.contexCodeMenuEl?.style.setProperty("display", "none");
+    this.moreActionsMenuEl?.style.setProperty("display", "none");
+    this.activeActionMenuEl = null;
   }
 
   private updateActiveChatTitle(): void {
@@ -1554,11 +1850,6 @@ export class ContexAgentView extends ItemView {
     }
 
     this.refreshConversationChrome();
-    this.noteActionButtons = this.noteActionButtons.filter(
-      (button) =>
-        button.isConnected &&
-        !button.classList.contains("contex-agent__suggestion-card")
-    );
     this.suggestionsEl.empty();
     this.suggestionsEl.toggleClass(
       "contex-agent__suggestions--hidden",
@@ -1569,50 +1860,178 @@ export class ContexAgentView extends ItemView {
       return;
     }
 
-    this.suggestionsEl.createDiv({
-      cls: "contex-agent__suggestions-title",
-      text: this.t("suggestedPrompts")
+    const homeHero = this.suggestionsEl.createDiv({
+      cls: "contex-agent__home-hero"
     });
-    const cardsEl = this.suggestionsEl.createDiv({
-      cls: "contex-agent__suggestion-cards"
+    const homeLogoWrap = homeHero.createDiv({
+      cls: "contex-agent__home-logo-wrap"
     });
-
-    NOTE_ACTIONS.forEach((action) => {
-      const localizedAction = getActionText(
-        this.getUiLanguage(),
-        getNoteActionId(action)
-      );
-      const cardEl = cardsEl.createEl("button", {
-        cls: "contex-agent__suggestion-card",
-        attr: {
-          type: "button"
-        }
-      });
-      const textEl = cardEl.createDiv({
-        cls: "contex-agent__suggestion-card-text"
-      });
-      textEl.createDiv({
-        cls: "contex-agent__suggestion-card-title",
-        text: localizedAction.label
-      });
-      textEl.createDiv({
-        cls: "contex-agent__suggestion-card-desc",
-        text: localizedAction.description
-      });
-      const iconEl = cardEl.createSpan({
-        cls: "contex-agent__suggestion-card-icon"
-      });
-      setIcon(iconEl, "plus-circle");
-      cardEl.addEventListener("click", () => {
-        void this.runNoteAction(action);
-      });
-      this.noteActionButtons.push(cardEl);
+    homeLogoWrap.createEl("img", {
+      cls: "contex-agent__home-logo",
+      attr: {
+        src: this.getPluginAssetResourcePath("assets/logo.png"),
+        alt: this.t("appName")
+      }
+    });
+    homeHero.createDiv({
+      cls: "contex-agent__home-greeting",
+      text: this.t("homeGreeting")
     });
   }
 
   private refreshConversationChrome(): void {
     this.rootEl?.toggleClass("contex-agent--has-chat", this.messages.length > 0);
     this.rootEl?.toggleClass("contex-agent--home", this.messages.length === 0);
+    this.refreshContextMeter();
+  }
+
+  private applyFontMode(): void {
+    const useComfortaa = this.plugin.settings.uiFont === "comfortaa";
+    this.rootEl?.toggleClass("contex-agent--font-comfortaa", useComfortaa);
+    this.rootEl?.toggleClass("contex-agent--font-obsidian", !useComfortaa);
+  }
+
+  private refreshContextMeter(): void {
+    if (!this.contextMeterEl || !this.contextMeterValueEl) {
+      return;
+    }
+
+    const usage = this.calculateApproximateContextUsage();
+    this.contextMeterValueEl.setText(`${usage.percent}%`);
+    this.contextMeterEl.style.setProperty(
+      "--contex-context-fill",
+      `${Math.round(usage.percent * 1.8)}deg`
+    );
+    this.contextMeterEl.toggleClass("is-warn", usage.percent >= 70);
+    this.contextMeterEl.toggleClass("is-high", usage.percent >= 88);
+    this.contextMeterEl.setAttribute(
+      "title",
+      [
+        `Approx. context: ${usage.percent}%`,
+        `~${usage.tokens.toLocaleString()} / ${CONTEXT_METER_TOKEN_BUDGET.toLocaleString()} tokens`,
+        `Chat ${usage.chatTokens.toLocaleString()}`,
+        `Input ${estimateTokensFromChars(this.inputEl?.value.length ?? 0).toLocaleString()}`,
+        `Note ${usage.noteTokens.toLocaleString()}`,
+        `Attached ${usage.attachedTokens.toLocaleString()}`,
+        `Reserved ${CONTEXT_METER_RESERVED_TOKENS.toLocaleString()}`
+      ].join(" | ")
+    );
+    this.contextMeterEl.setAttribute(
+      "aria-label",
+      `Approximate context usage ${usage.percent}%`
+    );
+  }
+
+  private calculateApproximateContextUsage(): {
+    percent: number;
+    tokens: number;
+    chatTokens: number;
+    noteTokens: number;
+    attachedTokens: number;
+  } {
+    const chatChars = this.messages.reduce((total, message) => {
+      const attachmentChars =
+        message.attachments?.reduce(
+          (sum, attachment) => sum + this.estimateAttachmentContextChars(attachment),
+          0
+        ) ?? 0;
+      return total + message.content.length + attachmentChars;
+    }, this.inputEl?.value.length ?? 0);
+    const noteChars = this.estimateActiveNoteContextChars();
+    const pendingAttachmentChars = this.attachedFiles.reduce(
+      (total, attachment) =>
+        total + this.estimateAttachmentContextChars(attachment),
+      0
+    );
+    const searchChars =
+      this.attachedVaultResults?.reduce(
+        (total, result) =>
+          total + result.path.length + result.title.length + result.snippet.length,
+        0
+      ) ?? 0;
+    const chatTokens = estimateTokensFromChars(chatChars);
+    const noteTokens = estimateTokensFromChars(noteChars);
+    const attachedTokens = estimateTokensFromChars(
+      pendingAttachmentChars + searchChars
+    );
+    const tokens =
+      CONTEXT_METER_RESERVED_TOKENS + chatTokens + noteTokens + attachedTokens;
+    const percent = Math.min(
+      100,
+      Math.max(0, Math.round((tokens / CONTEXT_METER_TOKEN_BUDGET) * 100))
+    );
+
+    return {
+      percent,
+      tokens,
+      chatTokens,
+      noteTokens,
+      attachedTokens
+    };
+  }
+
+  private estimateActiveNoteContextChars(): number {
+    if (!this.useCurrentNote) {
+      return 0;
+    }
+
+    const file = this.app.workspace.getActiveFile();
+
+    if (!file || file.extension !== "md") {
+      return 0;
+    }
+
+    return Math.min(file.stat.size, MAX_NOTE_ACTION_CONTEXT_CHARS);
+  }
+
+  private estimateAttachmentContextChars(attachment: LlmFileAttachment): number {
+    if (attachment.text?.trim()) {
+      return Math.min(attachment.text.length, MAX_ATTACHED_TEXT_CHARS);
+    }
+
+    return Math.min(Math.ceil(attachment.size / 2), MAX_ATTACHED_TEXT_CHARS);
+  }
+
+  private isAutoApplyEditsEnabled(): boolean {
+    return this.plugin.settings.autoApplyEdits === true;
+  }
+
+  private refreshAutoApplyToggle(): void {
+    if (!this.autoApplyToggleEl || !this.autoApplyToggleLabelEl) {
+      return;
+    }
+
+    const enabled = this.isAutoApplyEditsEnabled();
+    this.autoApplyToggleEl.toggleClass("is-active", enabled);
+    this.autoApplyToggleEl.setAttribute("aria-checked", String(enabled));
+    this.autoApplyToggleEl.setAttribute(
+      "title",
+      enabled
+        ? "Auto mode is on: edit previews apply immediately."
+        : "Manual mode: edit previews wait for approval."
+    );
+    this.autoApplyToggleLabelEl.setText(enabled ? "Auto" : "Manual");
+  }
+
+  private async toggleAutoApplyEdits(): Promise<void> {
+    const next = !this.isAutoApplyEditsEnabled();
+
+    this.plugin.settings.autoApplyEdits = next;
+    await this.plugin.saveSettings();
+    this.refreshAutoApplyToggle();
+  }
+
+  private queueAutoApplyDiffPreview(messageId: string): void {
+    if (!this.isAutoApplyEditsEnabled()) {
+      return;
+    }
+
+    this.statusEl?.setText("Status: Auto applying edit");
+    window.setTimeout(() => {
+      if (this.isAutoApplyEditsEnabled()) {
+        void this.applyDiffPreview(messageId);
+      }
+    }, 0);
   }
 
   private async runNoteAction(action: NoteAction): Promise<void> {
@@ -1639,6 +2058,12 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__model-menu"
     });
     this.modelMenuEl.style.display = "none";
+    this.modelMenuEl.addEventListener("mouseenter", () => {
+      this.cancelScheduledModelMenuClose();
+    });
+    this.modelMenuEl.addEventListener("mouseleave", () => {
+      this.scheduleCloseModelMenu();
+    });
     this.refreshModelMenu();
   }
 
@@ -1651,48 +2076,156 @@ export class ContexAgentView extends ItemView {
     this.modelMenuEl.empty();
 
     this.plugin.settings.modelProfiles.forEach((profile) => {
+      const compactLabel = this.getCompactModelProfileLabel(profile);
       const itemEl = this.modelMenuEl?.createEl("button", {
         cls: "contex-agent__model-menu-item",
         attr: {
           type: "button",
-          title: `${profile.model} | ${profile.baseUrl}`
+          "aria-label": `${profile.name} | ${profile.model} | ${profile.baseUrl}`
         }
       });
 
       itemEl?.toggleClass("is-active", profile.id === activeProfile.id);
       itemEl?.createSpan({
         cls: "contex-agent__model-menu-item-name",
-        text: profile.name
+        text: compactLabel
       });
-      itemEl?.addEventListener("click", () => {
+      itemEl?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         this.plugin.settings = this.modelProfileController.apply(
           this.plugin.settings,
           profile
         );
-        void this.plugin.saveSettings();
-        this.closeModelMenu();
         this.refreshSettings();
+        this.closeModelMenu();
+        void this.plugin.saveSettings();
       });
     });
   }
 
-  private toggleModelMenu(): void {
+  private showModelMenu(): void {
     if (!this.modelMenuEl) {
       return;
     }
 
-    this.refreshModelMenu();
-    this.modelMenuEl.style.display =
-      this.modelMenuEl.style.display === "none" ? "block" : "none";
+    this.cancelScheduledModelMenuClose();
+    this.closeChatMenu();
+    this.closeActionMenus();
+    this.modelMenuEl.style.display = "block";
+  }
+
+  private scheduleCloseModelMenu(): void {
+    this.cancelScheduledModelMenuClose();
+    this.modelMenuCloseTimer = window.setTimeout(() => {
+      this.closeModelMenu();
+    }, 260);
+  }
+
+  private cancelScheduledModelMenuClose(): void {
+    if (this.modelMenuCloseTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(this.modelMenuCloseTimer);
+    this.modelMenuCloseTimer = null;
   }
 
   private closeModelMenu(): void {
+    this.cancelScheduledModelMenuClose();
     this.modelMenuEl?.style.setProperty("display", "none");
+  }
+
+  private openModelProfilesModal(): void {
+    this.closeModelMenu();
+    new ModelProfilesModal(this.app, {
+      settings: this.plugin.settings,
+      onSave: async (settings) => {
+        this.plugin.settings = settings;
+        await this.plugin.saveSettings();
+        this.refreshSettings();
+      }
+    }).open();
+  }
+
+  private getCompactModelProfileLabel(
+    profile: { name: string; model: string }
+  ): string {
+    return compactModelProfileLabel(profile.name || profile.model);
+  }
+
+  private async getLiveDialogueLlmSettings(
+    content: string,
+    context: LlmRequestContext | null | undefined,
+    signal: AbortSignal
+  ): Promise<ContexSettings> {
+    const settings = this.plugin.settings;
+
+    if (settings.dialogueModelMode !== "dual") {
+      return settings;
+    }
+
+    const fastProfile = settings.modelProfiles.find(
+      (item) => item.id === settings.dialogueFastModelProfileId
+    );
+    const smartProfile = settings.modelProfiles.find(
+      (item) => item.id === settings.dialogueSmartModelProfileId
+    );
+    const fastSettings = fastProfile
+      ? applyModelProfile(settings, fastProfile)
+      : settings;
+    const smartSettings = smartProfile
+      ? applyModelProfile(settings, smartProfile)
+      : settings;
+
+    try {
+      this.statusEl?.setText("Status: Choosing response depth");
+      const routerResponse = await requestLlmSystemCompletion(
+        fastSettings,
+        buildLiveDialogueRoutingSystemPrompt(),
+        buildLiveDialogueRoutingUserPrompt({
+          userText: content,
+          hasCurrentNote: Boolean(context?.currentNote),
+          hasSelectedText: Boolean(context?.selectedText),
+          vaultResultCount: context?.vaultResults?.length ?? 0,
+          hasAttachments: Boolean(context?.attachments?.length),
+          chatMessageCount: this.messages.length
+        }),
+        signal
+      );
+      const decision =
+        parseLiveDialogueRouteDecision(routerResponse) ??
+        fallbackLiveDialogueRoute({ userText: content });
+
+      return decision.route === "smart" ? smartSettings : fastSettings;
+    } catch (error) {
+      if (signal.aborted) {
+        throw error;
+      }
+
+      const fallbackDecision = fallbackLiveDialogueRoute({ userText: content });
+      return fallbackDecision.route === "smart" ? smartSettings : fastSettings;
+    }
+  }
+
+  private shouldUseSmartDialogueModel(content: string): boolean {
+    const normalized = content.trim().toLowerCase();
+
+    if (normalized.length > 700) {
+      return true;
+    }
+
+    const lightIntentPattern =
+      /\b(кратко|быстро|открой|найди|покажи|перейди|прочитай|привет|hello|hi|short|quick|open|find|show|read)\b/u;
+    const heavyIntentPattern =
+      /\b(супер\s+детально|очень\s+детально|подробно|глубоко|проанализируй|анализ|исследуй|создай|напиши|измени|обнови|исправь|реализуй|рефактор|архитектур|roadmap|план|код|debug|fix|implement|refactor|architecture|research|deep|detailed)\b/u;
+
+    return heavyIntentPattern.test(normalized) && !lightIntentPattern.test(normalized);
   }
 
   private async checkSystemHealth(): Promise<void> {
     this.setError(null);
-    this.statusEl?.setText("Status: Checking Contex");
+    this.statusEl?.setText("Status: Checking Mindo");
 
     try {
       const [sttStatus, llmResponse] = await Promise.all([
@@ -1799,16 +2332,17 @@ export class ContexAgentView extends ItemView {
           this.renderAttachedContext();
         }
 
-        if (options?.liveDialogue) {
-          await this.continueLiveDialogueAfterLocalAction();
-        }
-
         if (this.isLoading && !this.activeGenerationAbortController) {
           this.setLoading(false);
         }
 
         this.pendingUserMessageId = null;
         this.pendingUserPrompt = null;
+
+        if (options?.liveDialogue) {
+          await this.continueLiveDialogueAfterLocalAction();
+        }
+
         return;
       }
     } finally {
@@ -1994,7 +2528,7 @@ export class ContexAgentView extends ItemView {
       ]);
       return parseWebResearchQueryRewrite(response, fallbackQuery);
     } catch (error) {
-      console.warn("[Contex Agent] Web query rewrite failed", error);
+      console.warn("[Mindo] Web query rewrite failed", error);
       return fallbackQuery;
     }
   }
@@ -2083,7 +2617,7 @@ export class ContexAgentView extends ItemView {
 
       return parseSemanticQueryVariants(response);
     } catch (error) {
-      console.warn("[Contex Agent] Semantic query expansion failed", error);
+      console.warn("[Mindo] Semantic query expansion failed", error);
       return [];
     }
   }
@@ -2258,7 +2792,7 @@ export class ContexAgentView extends ItemView {
         "Auto web research failed",
         this.getErrorMessage(error)
       );
-      console.warn("[Contex Agent] Auto web research failed", error);
+      console.warn("[Mindo] Auto web research failed", error);
       return null;
     }
   }
@@ -2332,7 +2866,7 @@ export class ContexAgentView extends ItemView {
         chunks.push(chunk);
         remainingChars -= chunk.length;
       } catch (error) {
-        console.warn("[Contex Agent] Could not read project memory", file.path, error);
+        console.warn("[Mindo] Could not read project memory", file.path, error);
       }
     }
 
@@ -2550,8 +3084,8 @@ export class ContexAgentView extends ItemView {
     displayCommandText: string
   ): Promise<void> {
     const sourceContext: SelectedTextContext = {
-      path: "Contex Agent Command",
-      name: "Contex Agent Command",
+      path: "Mindo Command",
+      name: "Mindo Command",
       text: commandText,
       isTruncated: false,
       originalLength: commandText.length,
@@ -2657,8 +3191,8 @@ export class ContexAgentView extends ItemView {
       ? [...this.attachedFiles]
       : null;
     const sourceContext: SelectedTextContext = {
-      path: "Contex Agent Research Workflow",
-      name: "Contex Agent Research Workflow",
+      path: "Mindo Research Workflow",
+      name: "Mindo Research Workflow",
       text: commandText,
       isTruncated: false,
       originalLength: commandText.length,
@@ -2670,7 +3204,7 @@ export class ContexAgentView extends ItemView {
     this.statusEl?.setText("Status: Research workflow");
 
     try {
-      console.debug("[Contex Agent] Research workflow started", {
+      console.debug("[Mindo] Research workflow started", {
         commandText,
         targetFolder,
         activePath: activeNote?.file.path ?? null
@@ -2793,7 +3327,7 @@ export class ContexAgentView extends ItemView {
       );
       this.statusEl?.setText("Status: Research note created");
     } catch (error) {
-      console.warn("[Contex Agent] Research workflow failed", error);
+      console.warn("[Mindo] Research workflow failed", error);
       this.setError(this.getErrorMessage(error));
       this.statusEl?.setText("Status: Research workflow failed");
       this.appendWorkflowReceipt({
@@ -2851,7 +3385,7 @@ export class ContexAgentView extends ItemView {
         results: response.results
       };
     } catch (error) {
-      console.warn("[Contex Agent] Research workflow web lookup failed", error);
+      console.warn("[Mindo] Research workflow web lookup failed", error);
       return null;
     }
   }
@@ -2865,7 +3399,7 @@ export class ContexAgentView extends ItemView {
     const title =
       sanitizeResearchTitle(parsed.title) ||
       inferResearchNoteTitle(commandText) ||
-      "Contex Research Note";
+      "Mindo Research Note";
     const path = await getUniqueNotePath(
       this.app,
       `${normalizePath(targetFolder).replace(/^\/+/, "")}/${slugifyTitle(title)}.md`
@@ -2939,7 +3473,7 @@ export class ContexAgentView extends ItemView {
 
     const activeFolder = activePath ? getFolderPath(activePath) : "";
 
-    return activeFolder || "Contex Inbox";
+    return activeFolder || "Mindo Inbox";
   }
 
   private resolveVaultFolderPath(folderQuery: string): string | null {
@@ -3053,10 +3587,10 @@ export class ContexAgentView extends ItemView {
 
   private async prepareCreateNoteProposal(
     proposalText: string,
-    fallbackFolder = "Contex Inbox"
+    fallbackFolder = "Mindo Inbox"
   ): Promise<CreateNoteProposal> {
     const parsed = parseCreateNoteProposalText(proposalText);
-    const title = parsed.title || "Contex Note";
+    const title = parsed.title || "Mindo Note";
     const requestedPath = isSafeCreateNotePath(parsed.path)
       ? parsed.path
       : `${fallbackFolder}/${slugifyTitle(title)}.md`;
@@ -3173,7 +3707,7 @@ export class ContexAgentView extends ItemView {
       throw new Error("New note content is empty.");
     }
 
-    assertWritableVaultPath(path);
+    assertWritableVaultPath(path, this.app.vault.configDir);
     await ensureFolderForPath(this.app, path);
     this.pushActionTimeline("running", "Creating note", path, path);
 
@@ -3262,12 +3796,20 @@ export class ContexAgentView extends ItemView {
     );
     const abortController = new AbortController();
     this.activeGenerationAbortController = abortController;
+    const llmSettings = options?.liveDialogue
+      ? await this.getLiveDialogueLlmSettings(
+          content,
+          requestContext,
+          abortController.signal
+        )
+      : this.plugin.settings;
 
     let liveAssistantMessage: ChatMessage | null = null;
     let shouldContinueLiveDialogue = false;
     let liveSpeechQueue: StreamingSpeechQueue | null = null;
     let usedLiveStreamingSpeech = false;
     let liveAssistantMessageId: string | null = null;
+    let autoApplyMessageId: string | null = null;
 
     try {
       const requestMessages = [...this.messages];
@@ -3295,7 +3837,7 @@ export class ContexAgentView extends ItemView {
 
       try {
         const streamedContent = await streamLlmChatCompletion(
-          this.plugin.settings,
+          llmSettings,
           requestMessages,
           requestContext,
           (token) => {
@@ -3311,7 +3853,7 @@ export class ContexAgentView extends ItemView {
         );
 
         if (abortController.signal.aborted) {
-          throw new Error("Contex generation canceled.");
+          throw new Error("Mindo generation canceled.");
         }
 
         if (streamedContent.trim()) {
@@ -3324,27 +3866,27 @@ export class ContexAgentView extends ItemView {
 
         this.statusEl?.setText("Status: Streaming unavailable, waiting for LLM");
         assistantMessage.content = await requestLlmChatCompletion(
-          this.plugin.settings,
+          llmSettings,
           requestMessages,
           requestContext
         );
         liveSpeechQueue?.pushToken(assistantMessage.content);
 
         if (abortController.signal.aborted) {
-          throw new Error("Contex generation canceled.");
+          throw new Error("Mindo generation canceled.");
         }
       }
 
       if (!assistantMessage.content.trim()) {
         assistantMessage.content = await requestLlmChatCompletion(
-          this.plugin.settings,
+          llmSettings,
           requestMessages,
           requestContext
         );
         liveSpeechQueue?.pushToken(assistantMessage.content);
 
         if (abortController.signal.aborted) {
-          throw new Error("Contex generation canceled.");
+          throw new Error("Mindo generation canceled.");
         }
       }
 
@@ -3372,6 +3914,7 @@ export class ContexAgentView extends ItemView {
           userPrompt: options.diffUserPrompt ?? content
         };
         void this.showInlineDiffForMessage(assistantMessage.id);
+        autoApplyMessageId = assistantMessage.id;
       }
 
       if (requestContext?.vaultResults?.length) {
@@ -3442,6 +3985,9 @@ export class ContexAgentView extends ItemView {
         this.pendingUserPrompt = null;
         this.setLoading(false);
         void this.renderMessages();
+        if (autoApplyMessageId) {
+          this.queueAutoApplyDiffPreview(autoApplyMessageId);
+        }
       }
 
       if (
@@ -3506,7 +4052,7 @@ export class ContexAgentView extends ItemView {
       });
       messageHeaderEl.createDiv({
         cls: "contex-agent__message-role",
-        text: message.role
+        text: formatChatMessageRoleLabel(message.role)
       });
 
       if (this.canSpeakMessage(message)) {
@@ -3514,10 +4060,6 @@ export class ContexAgentView extends ItemView {
           cls: "contex-agent__message-action",
           attr: {
             type: "button",
-            title:
-              this.speakingMessageId === message.id
-                ? "Stop reading"
-                : "Read answer",
             "aria-label":
               this.speakingMessageId === message.id
                 ? "Stop reading"
@@ -3602,6 +4144,7 @@ export class ContexAgentView extends ItemView {
 
     this.rootEl?.addClass("contex-agent--has-chat");
     this.rootEl?.removeClass("contex-agent--home");
+    this.refreshContextMeter();
     const shouldStickToBottom =
       this.shouldAutoScrollChat || this.isChatNearBottom();
     const messageEl = this.chatEl.createDiv({
@@ -3614,7 +4157,7 @@ export class ContexAgentView extends ItemView {
     });
     messageHeaderEl.createDiv({
       cls: "contex-agent__message-role",
-      text: message.role
+      text: formatChatMessageRoleLabel(message.role)
     });
 
     const contentEl = messageEl.createDiv({
@@ -3732,7 +4275,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__typing-cancel",
       attr: {
         type: "button",
-        title: "Cancel response",
         "aria-label": "Cancel response"
       }
     });
@@ -4279,7 +4821,7 @@ export class ContexAgentView extends ItemView {
 
       return JSON.parse(cleanJsonLikeResponse(response));
     } catch (error) {
-      console.warn("[Contex Agent] Falling back to heuristic Contex Code plan", error);
+      console.warn("[Mindo] Falling back to heuristic Mindo Code plan", error);
       return null;
     }
   }
@@ -4397,7 +4939,7 @@ export class ContexAgentView extends ItemView {
     receipt: ActionReceipt,
     userContent?: string
   ): void {
-    console.debug("[Contex Agent] Workflow receipt", receipt);
+    console.debug("[Mindo] Workflow receipt", receipt);
     this.appendActionReceipt(receipt, userContent);
   }
 
@@ -4522,7 +5064,7 @@ export class ContexAgentView extends ItemView {
         sourcePaths: decision.sourcePaths
       });
     } catch (error) {
-      console.warn("[Contex Wiki] Autopilot memory write failed", error);
+      console.warn("[Mindo Wiki] Autopilot memory write failed", error);
     }
   }
 
@@ -4534,7 +5076,7 @@ export class ContexAgentView extends ItemView {
     confidence: number;
     sourcePaths: string[];
   }): Promise<void> {
-    const title = slugifyTitle(input.title || "Contex Wiki Update").slice(0, 90);
+    const title = slugifyTitle(input.title || "Mindo Wiki Update").slice(0, 90);
     const rawSource = {
       id: `raw-${Date.now().toString(36)}`,
       kind: "raw" as const,
@@ -4630,6 +5172,8 @@ export class ContexAgentView extends ItemView {
   }
 
   private renderAttachedContext(): void {
+    this.refreshContextMeter();
+
     if (!this.attachedContextEl) {
       return;
     }
@@ -4697,7 +5241,6 @@ export class ContexAgentView extends ItemView {
       cls: "contex-agent__attached-context-clear",
       attr: {
         type: "button",
-        title: "Clear attached context",
         "aria-label": "Clear attached context"
       }
     });
@@ -4863,7 +5406,7 @@ export class ContexAgentView extends ItemView {
     }
 
     try {
-      assertWritableVaultPath(file.path);
+      assertWritableVaultPath(file.path, this.app.vault.configDir);
     } catch (error) {
       this.setError(this.getErrorMessage(error));
       this.statusEl?.setText("Status: Apply blocked");
@@ -4899,7 +5442,7 @@ export class ContexAgentView extends ItemView {
       this.activeRefineMessageId = null;
       clearInlineDiffPreview(this.app, file.path);
       this.statusEl?.setText("Status: Applied");
-      new Notice("Contex Agent applied the suggested replacement.");
+      new Notice("Mindo applied the suggested replacement.");
       this.appendActionReceipt({
         status: "done",
         label: "Applied change",
@@ -4943,7 +5486,7 @@ export class ContexAgentView extends ItemView {
         diffPreview.status = "reverted";
         this.activeRefineMessageId = null;
         this.statusEl?.setText("Status: Reverted");
-        new Notice("Contex Agent reverted the accepted replacement.");
+        new Notice("Mindo reverted the accepted replacement.");
         this.appendActionReceipt({
           status: "reverted",
           label: "Reverted change",
@@ -4978,7 +5521,7 @@ export class ContexAgentView extends ItemView {
       diffPreview.status = "reverted";
       this.activeRefineMessageId = null;
       this.statusEl?.setText("Status: Reverted");
-      new Notice("Contex Agent reverted the accepted replacement.");
+      new Notice("Mindo reverted the accepted replacement.");
       this.appendActionReceipt({
         status: "reverted",
         label: "Reverted change",
@@ -5167,7 +5710,6 @@ export class ContexAgentView extends ItemView {
         cls: "contex-agent__selection-toolbar-button",
         attr: {
           type: "button",
-          title: action.label,
           "aria-label": action.label
         }
       });
@@ -5345,7 +5887,7 @@ export class ContexAgentView extends ItemView {
 
     void this.warmLiveDialogueAcknowledgements();
     void warmStreamingSpeechAudioContext().catch((error) => {
-      console.debug("[Contex Agent] Live dialogue audio warmup unavailable", error);
+      console.debug("[Mindo] Live dialogue audio warmup unavailable", error);
     });
     this.syncLiveBargeInMonitor();
 
@@ -5771,7 +6313,7 @@ export class ContexAgentView extends ItemView {
       recognition.start();
       this.liveSpeechRecognition = recognition;
     } catch (error) {
-      console.debug("[Contex Agent] Live transcript preview unavailable", error);
+      console.debug("[Mindo] Live transcript preview unavailable", error);
       this.liveSpeechRecognition = null;
     }
   }
@@ -5902,7 +6444,7 @@ export class ContexAgentView extends ItemView {
       recognition.start();
       this.liveBargeInRecognition = recognition;
     } catch (error) {
-      console.debug("[Contex Agent] Live barge-in monitor unavailable", error);
+      console.debug("[Mindo] Live barge-in monitor unavailable", error);
       this.liveBargeInRecognition = null;
       this.liveBargeInDisabledUntil = Date.now() + 2500;
     }
@@ -5986,7 +6528,7 @@ export class ContexAgentView extends ItemView {
       this.liveBargeInVoiceActivityState = createVoiceActivityState();
       this.animateLiveBargeInAudioMonitor();
     } catch (error) {
-      console.debug("[Contex Agent] Live barge-in audio monitor unavailable", error);
+      console.debug("[Mindo] Live barge-in audio monitor unavailable", error);
     }
   }
 
@@ -6198,7 +6740,7 @@ export class ContexAgentView extends ItemView {
       this.voiceWaveformEl?.addClass("is-active");
       this.animateVoiceLevelMeter();
     } catch (error) {
-      console.warn("[Contex Agent] Voice level meter unavailable", error);
+      console.warn("[Mindo] Voice level meter unavailable", error);
     }
   }
 
@@ -6310,7 +6852,7 @@ export class ContexAgentView extends ItemView {
       return false;
     }
 
-    console.debug("[Contex Agent] Local command action", {
+    console.debug("[Mindo] Local command action", {
       text: trimmedText,
       action
     });
@@ -6449,11 +6991,19 @@ export class ContexAgentView extends ItemView {
     }
 
     const deterministicOpenFileQuery = parseVoiceOpenFileQuery(effectiveCommandText);
+    const shouldTryDeterministicOpen =
+      Boolean(deterministicOpenFileQuery) &&
+      (isPlainOpenFileCommand(effectiveCommandText) ||
+        isBareOpenFileCorrection(effectiveCommandText));
+    const deterministicOpenFileCandidate =
+      shouldTryDeterministicOpen && deterministicOpenFileQuery
+        ? this.resolveOpenFileCandidate(deterministicOpenFileQuery)
+        : null;
 
     if (
       deterministicOpenFileQuery &&
-      isPlainOpenFileCommand(effectiveCommandText) &&
-      this.resolveOpenFileCandidate(deterministicOpenFileQuery)
+      shouldTryDeterministicOpen &&
+      deterministicOpenFileCandidate
     ) {
       return {
         kind: "open-file",
@@ -6478,13 +7028,13 @@ export class ContexAgentView extends ItemView {
       };
     }
 
-    if (
-      shouldRouteThroughSemanticIntentRouter(
-        commandText,
-        effectiveCommandText,
-        createCommandText
-      )
-    ) {
+    const shouldTrySemanticAction = shouldRouteThroughSemanticIntentRouter(
+      commandText,
+      effectiveCommandText,
+      createCommandText
+    );
+
+    if (shouldTrySemanticAction) {
       const semanticAction = await this.resolveSemanticLocalCommandAction(
         commandText,
         effectiveCommandText
@@ -6552,6 +7102,14 @@ export class ContexAgentView extends ItemView {
       deterministicOpenFileQuery ?? parseVoiceOpenFileQuery(effectiveCommandText);
 
     if (openFileQuery) {
+      if (
+        shouldTrySemanticAction &&
+        shouldTryDeterministicOpen &&
+        !deterministicOpenFileCandidate
+      ) {
+        return null;
+      }
+
       return {
         kind: "open-file",
         commandText: trimmedText,
@@ -6716,7 +7274,7 @@ export class ContexAgentView extends ItemView {
   private async executeLocalCommandActionPlan(
     plan: Extract<LocalCommandAction, { kind: "action-plan" }>
   ): Promise<void> {
-    console.debug("[Contex Agent] Executing local action plan", plan);
+    console.debug("[Mindo] Executing local action plan", plan);
     this.setError(null);
 
     for (let index = 0; index < plan.actions.length; index += 1) {
@@ -6730,7 +7288,7 @@ export class ContexAgentView extends ItemView {
       const errorMessage = this.errorEl?.textContent?.trim();
 
       if (errorMessage) {
-        console.warn("[Contex Agent] Local action plan stopped", {
+        console.warn("[Mindo] Local action plan stopped", {
           step: index + 1,
           action,
           errorMessage
@@ -6773,7 +7331,7 @@ export class ContexAgentView extends ItemView {
             actions
           };
     } catch (error) {
-      console.warn("[Contex Agent] Semantic local command failed", error);
+      console.warn("[Mindo] Semantic local command failed", error);
       this.statusEl?.setText("Status: Ready");
       return null;
     }
@@ -6876,7 +7434,7 @@ export class ContexAgentView extends ItemView {
 
       return false;
     } catch (error) {
-      console.warn("[Contex Agent] Semantic local command failed", error);
+      console.warn("[Mindo] Semantic local command failed", error);
       this.statusEl?.setText("Status: Ready");
       return false;
     }
@@ -6931,6 +7489,31 @@ export class ContexAgentView extends ItemView {
       .filter((candidate) => candidate.score > 0)
       .sort((left, right) => right.score - left.score)
       .slice(0, 16);
+    const scoredFilePaths = new Set(
+      fileCandidates.map((candidate) => candidate.file.path)
+    );
+    const activePath = this.app.workspace.getActiveFile()?.path ?? "";
+    const relatedFolders = new Set(
+      [
+        activePath,
+        ...this.findLastMentionedMarkdownPaths().slice(0, 5),
+        ...this.voiceSessionMemory.lastFoundFiles
+          .slice(0, 6)
+          .map((result) => result.path)
+      ]
+        .map((path) => getFolderPath(path))
+        .filter(Boolean)
+    );
+    const contextNearFiles = relatedFolders.size
+      ? files
+          .filter(
+            (file) =>
+              !scoredFilePaths.has(file.path) &&
+              relatedFolders.has(getFolderPath(file.path))
+          )
+          .sort((left, right) => left.path.localeCompare(right.path))
+          .slice(0, 24)
+      : [];
     const folders = Array.from(
       new Set(files.map((file) => getFolderPath(file.path)).filter(Boolean))
     );
@@ -6977,6 +7560,16 @@ export class ContexAgentView extends ItemView {
             .map(
               (candidate, index) =>
                 `${index + 1}. ${candidate.file.path} (title: ${candidate.file.basename}, folder: ${getFolderPath(candidate.file.path) || "/"}, score ${candidate.score})`
+            )
+            .join("\n")
+        : "(none)",
+      "",
+      "Context-near file candidates:",
+      contextNearFiles.length
+        ? contextNearFiles
+            .map(
+              (file, index) =>
+                `${index + 1}. ${file.path} (title: ${file.basename}, folder: ${getFolderPath(file.path) || "/"})`
             )
             .join("\n")
         : "(none)"
@@ -7052,6 +7645,9 @@ export class ContexAgentView extends ItemView {
       "- If the user corrects themselves with words like 'точнее', 'вернее', 'извиняюсь', 'нет', 'а не', 'actually', or 'instead', the later corrected intent wins.",
       "- Folder mentions are important. If the user says 'in folder X' / 'в папке X', preserve that folder meaning in the chosen action.",
       "- For open_file, if a file candidate is clearly intended, return its exact vault path in query.",
+      "- For open_file, use the listed File candidates and Context-near file candidates as the ground truth. Resolve fuzzy speech by comparing meaning, title, folder, active note, and recent context; do not rely on a fixed language-specific alias list.",
+      "- For open_file, do not substitute the active/current note when the user names a different file. Use the closest spoken filename candidate, or keep the user's requested title in query if no candidate is clear.",
+      "- If multiple open_file candidates are plausible and none is clearly intended, return none so the chat can ask a short clarification instead of opening the wrong note.",
       "- For create_note or research_note, preserve the intended target folder in query when the user mentions one.",
       "- If a command contains both open and create, decide by the user's final corrected intent, not by whichever word appears first.",
       "- If the user is asking how to do something or asking an explanatory question, choose none unless they clearly request an actual vault action.",
@@ -7174,6 +7770,7 @@ export class ContexAgentView extends ItemView {
     this.statusEl?.setText("Status: Preview ready");
     void this.showInlineDiffForMessage(assistantMessage.id);
     void this.renderMessages();
+    this.queueAutoApplyDiffPreview(assistantMessage.id);
   }
 
   private async previewVoiceReplacementOrCurrentNoteLine(
@@ -7267,6 +7864,7 @@ export class ContexAgentView extends ItemView {
     this.statusEl?.setText("Status: Preview ready");
     void this.showInlineDiffForMessage(assistantMessage.id);
     void this.renderMessages();
+    this.queueAutoApplyDiffPreview(assistantMessage.id);
   }
 
   private async findUniqueTextOccurrenceForPreview(
@@ -7381,6 +7979,7 @@ export class ContexAgentView extends ItemView {
     this.statusEl?.setText("Status: Preview ready");
     void this.showInlineDiffForMessage(assistantMessage.id);
     void this.renderMessages();
+    this.queueAutoApplyDiffPreview(assistantMessage.id);
   }
 
   private async answerFromLastFoundFile(commandText: string): Promise<void> {
@@ -7447,46 +8046,37 @@ export class ContexAgentView extends ItemView {
     commandText: string
   ): Promise<string | null> {
     this.pushActionTimeline("opening", "Opening note", query);
-    const rustResolved = await resolvePathsWithRustCore({
-      query,
-      paths: this.app.vault.getMarkdownFiles().map((file) => file.path),
-      limit: 3,
-      pluginDir: __dirname
-    });
-    let results: VaultSearchResult[] = rustResolved?.length
-      ? rustResolved.map((result) => ({
-          path: result.path,
-          title: result.path.split("/").pop()?.replace(/\.md$/i, "") ?? result.path,
-          score: result.score,
-          snippet: "Matched by Rust path resolver.",
-          matches: ["rust-core", "path"]
-        }))
-      : [];
+    let results: VaultSearchResult[] = [];
+    const directFile = this.resolveOpenFileCandidate(query);
 
-    if (!results.length) {
-      const directFile = this.resolveOpenFileCandidate(query);
-
-      if (directFile) {
-        results = [
-          {
-            path: directFile.path,
-            title: directFile.basename,
-            score: 999,
-            snippet: "Matched by file name and folder.",
-            matches: ["filename", "path"]
-          }
-        ];
-      }
+    if (directFile) {
+      results = [
+        {
+          path: directFile.path,
+          title: directFile.basename,
+          score: 999,
+          snippet: "Matched by file name and folder.",
+          matches: ["filename", "path"]
+        }
+      ];
     }
 
     if (!results.length) {
-      results = await searchSemanticVaultMarkdown(
-        this.app,
+      const rustResolved = await resolvePathsWithRustCore({
         query,
-        [query],
-        1,
-        this.plugin.settings
-      );
+        paths: this.app.vault.getMarkdownFiles().map((file) => file.path),
+        limit: 3,
+        pluginDir: __dirname
+      });
+      results = rustResolved?.length
+        ? rustResolved.map((result) => ({
+            path: result.path,
+            title: result.path.split("/").pop()?.replace(/\.md$/i, "") ?? result.path,
+            score: result.score,
+            snippet: "Matched by Rust path resolver.",
+            matches: ["rust-core", "path"]
+          }))
+        : [];
     }
 
     if (!results.length) {
@@ -7688,27 +8278,12 @@ export class ContexAgentView extends ItemView {
     finalTranscription: string,
     options: { includeLiveBase: boolean }
   ): string {
-    const finalText = finalTranscription.trim();
-    const livePreview = this.liveTranscriptLastPreview.trim();
-    const liveBase = this.liveTranscriptBaseText.trim();
-    const previewSpoken =
-      liveBase && livePreview.startsWith(liveBase)
-        ? livePreview.slice(liveBase.length).trim()
-        : livePreview;
-
-    const spokenText = !finalText
-      ? previewSpoken
-      : !previewSpoken
-        ? finalText
-        : shouldUseFinalTranscription(finalText, previewSpoken)
-          ? finalText
-          : previewSpoken;
-
-    if (!options.includeLiveBase || !liveBase) {
-      return spokenText;
-    }
-
-    return [liveBase, spokenText].filter(Boolean).join(" ").trim();
+    return resolveBestTranscribedText({
+      finalTranscription,
+      liveTranscriptBaseText: this.liveTranscriptBaseText,
+      liveTranscriptLastPreview: this.liveTranscriptLastPreview,
+      includeLiveBase: options.includeLiveBase
+    });
   }
 
   private updateMicButton(): void {
@@ -7719,10 +8294,7 @@ export class ContexAgentView extends ItemView {
     this.micButtonEl.empty();
     setIcon(this.micButtonEl, this.isRecording ? "square" : "mic");
     this.micButtonEl.toggleClass("is-recording", this.isRecording);
-    this.micButtonEl.setAttribute(
-      "title",
-      this.isRecording ? this.t("stopRecording") : this.t("recordVoice")
-    );
+    this.micButtonEl.removeAttribute("title");
     this.micButtonEl.setAttribute(
       "aria-label",
       this.isRecording ? this.t("stopRecording") : this.t("recordVoice")
@@ -7737,19 +8309,15 @@ export class ContexAgentView extends ItemView {
     }
 
     this.liveDialogueButtonEl.empty();
-    setIcon(this.liveDialogueButtonEl, "sparkle");
+    this.createMindoLogoImage(
+      this.liveDialogueButtonEl,
+      "contex-agent__live-dialogue-logo"
+    );
     this.liveDialogueButtonEl.toggleClass(
       "is-live-dialogue-active",
       this.isLiveDialogueSessionActive
     );
-    this.liveDialogueButtonEl.setAttribute(
-      "title",
-      this.isLiveDialogueSessionActive
-        ? this.isRecording
-          ? this.t("sendLiveDialogueTurn")
-          : this.t("stopLiveDialogue")
-        : this.t("startLiveDialogue")
-    );
+    this.liveDialogueButtonEl.removeAttribute("title");
     this.liveDialogueButtonEl.setAttribute(
       "aria-label",
       this.isLiveDialogueSessionActive
@@ -7784,7 +8352,10 @@ export class ContexAgentView extends ItemView {
       latestAssistantText: getLiveDialogueLatestAssistantText({
         messages: this.messages,
         streamingMessageId: this.streamingMessageId
-      })
+      }),
+      messages: this.messages,
+      liveInput: this.inputEl?.value ?? "",
+      streamingMessageId: this.streamingMessageId
     });
     const rootClasses = [
       "is-live-dialogue-surface-active",
@@ -7812,7 +8383,7 @@ export class ContexAgentView extends ItemView {
 
     this.liveDialoguePhaseEl?.setText(getLiveDialoguePhaseLabel(state.phase));
     this.refreshLiveDialogueOrb(state.phase, state.showVoiceSurface);
-    this.renderLiveDialogueTranscript(state);
+    void this.renderLiveDialogueTranscript(state);
   }
 
   private refreshLiveDialogueOrb(
@@ -7836,15 +8407,7 @@ export class ContexAgentView extends ItemView {
 
     this.liveDialogueOrbEl.toggleClass("is-active", isVisible);
     this.liveDialogueOrbEl.addClass(`is-${phase}`);
-    this.liveDialogueOrbEl.setAttribute(
-      "title",
-      getLiveDialogueOrbTitle({
-        phase,
-        isSessionActive: this.isLiveDialogueSessionActive,
-        startLabel: this.t("startLiveDialogue"),
-        stopLabel: this.t("stopLiveDialogue")
-      })
-    );
+    this.liveDialogueOrbEl.removeAttribute("title");
     this.liveDialogueOrbEl.setAttribute(
       "aria-label",
       getLiveDialogueOrbTitle({
@@ -7861,42 +8424,96 @@ export class ContexAgentView extends ItemView {
     }
   }
 
-  private renderLiveDialogueTranscript(
+  private async renderLiveDialogueTranscript(
     state: ReturnType<typeof getLiveDialogueSurfaceState>
-  ): void {
+  ): Promise<void> {
     if (!this.liveDialogueTranscriptEl) {
       return;
     }
 
+    const renderSequence = ++this.liveDialogueTranscriptRenderSequence;
+    const sourcePath = getCurrentNoteLabel(this.app) ?? "";
+
     this.liveDialogueTranscriptEl.empty();
 
-    const transcript = state.transcript.length
-      ? state.transcript
-      : [
-          {
-            role: "assistant" as const,
-            text: getLiveDialogueFallbackText(state.phase)
-          }
-        ];
+    const transcript = this.getLiveDialogueDisplayTranscript(state);
 
-    transcript.forEach((item) => {
-      const itemEl = this.liveDialogueTranscriptEl?.createDiv({
-        cls: `contex-agent__live-transcript-item contex-agent__live-transcript-item--${item.role}`
-      });
-
-      if (!itemEl) {
+    for (const item of transcript) {
+      if (renderSequence !== this.liveDialogueTranscriptRenderSequence) {
         return;
       }
 
-      itemEl.createDiv({
+      const itemEl = this.liveDialogueTranscriptEl?.createDiv({
+        cls: [
+          "contex-agent__live-transcript-item",
+          `contex-agent__live-transcript-item--${item.role}`,
+          `contex-agent__live-transcript-item--${item.variant}`
+        ]
+      });
+
+      if (!itemEl) {
+        continue;
+      }
+
+      if (item.role === "assistant") {
+        const avatarEl = itemEl.createSpan({
+          cls: "contex-agent__live-transcript-avatar"
+        });
+        this.createMindoLogoImage(
+          avatarEl,
+          "contex-agent__live-transcript-avatar-logo"
+        );
+      }
+
+      const bubbleEl = itemEl.createDiv({
+        cls: "contex-agent__live-transcript-bubble"
+      });
+      bubbleEl.createDiv({
         cls: "contex-agent__live-transcript-role",
-        text: item.role === "assistant" ? "Contex" : "You"
+        text: item.role === "assistant" ? "Mindo" : "You"
       });
-      itemEl.createDiv({
-        cls: "contex-agent__live-transcript-text",
-        text: item.text
+      const textEl = bubbleEl.createDiv({
+        cls: "contex-agent__live-transcript-text"
       });
-    });
+
+      if (item.role === "assistant" && item.text.trim()) {
+        textEl.addClass("markdown-rendered");
+        await MarkdownRenderer.render(
+          this.app,
+          stripHiddenTtsHints(item.text),
+          textEl,
+          sourcePath,
+          this
+        );
+      } else {
+        textEl.setText(item.text);
+      }
+
+      if (renderSequence !== this.liveDialogueTranscriptRenderSequence) {
+        return;
+      }
+    }
+
+    if (renderSequence === this.liveDialogueTranscriptRenderSequence) {
+      this.liveDialogueTranscriptEl.scrollTop =
+        this.liveDialogueTranscriptEl.scrollHeight;
+    }
+  }
+
+  private getLiveDialogueDisplayTranscript(
+    state: ReturnType<typeof getLiveDialogueSurfaceState>
+  ): LiveDialogueTranscriptItem[] {
+    if (state.transcript.length) {
+      return state.transcript;
+    }
+
+    return [
+      {
+        role: "assistant",
+        text: getLiveDialogueFallbackText(state.phase),
+        variant: "status"
+      }
+    ];
   }
 
   private canSpeakMessage(message: ChatMessage): boolean {
@@ -8022,7 +8639,7 @@ export class ContexAgentView extends ItemView {
           return;
         }
 
-        console.warn("[Contex Streaming TTS]", error);
+        console.warn("[Mindo Streaming TTS]", error);
         this.setError(this.getErrorMessage(error));
         this.statusEl?.setText("Status: TTS failed");
       }
@@ -8258,7 +8875,7 @@ export class ContexAgentView extends ItemView {
           return;
         }
 
-        console.warn("[Contex TTS]", this.getErrorMessage(error));
+        console.warn("[Mindo TTS]", this.getErrorMessage(error));
 
         if (this.plugin.settings.fallbackToBrowserTts) {
           new Notice(
@@ -8296,7 +8913,7 @@ export class ContexAgentView extends ItemView {
           return;
         }
 
-        console.warn("[Contex TTS]", this.getErrorMessage(error));
+        console.warn("[Mindo TTS]", this.getErrorMessage(error));
 
         if (this.plugin.settings.fallbackToBrowserTts) {
           new Notice(
@@ -8329,7 +8946,7 @@ export class ContexAgentView extends ItemView {
           return;
         }
 
-        console.warn("[Contex TTS]", this.getErrorMessage(error));
+        console.warn("[Mindo TTS]", this.getErrorMessage(error));
 
         if (this.plugin.settings.fallbackToBrowserTts) {
           new Notice(
@@ -8519,23 +9136,17 @@ export class ContexAgentView extends ItemView {
 
     if (this.isTranscribingVoice) {
       this.renderThinkingDots(this.sendButtonEl);
-      this.sendButtonEl.setAttribute("title", "Transcribing voice");
       this.sendButtonEl.setAttribute("aria-label", "Transcribing voice");
       return;
     }
 
     if (this.isLoading && !this.isRecording) {
       this.renderThinkingDots(this.sendButtonEl);
-      this.sendButtonEl.setAttribute("title", "Cancel response");
       this.sendButtonEl.setAttribute("aria-label", "Cancel response");
       return;
     }
 
     setIcon(this.sendButtonEl, "arrow-up");
-    this.sendButtonEl.setAttribute(
-      "title",
-      this.isRecording ? "Send voice message" : "Send"
-    );
     this.sendButtonEl.setAttribute(
       "aria-label",
       this.isRecording ? "Send voice message" : "Send"
@@ -8726,6 +9337,8 @@ export class ContexAgentView extends ItemView {
   }
 
   private refreshContextStatus(): void {
+    this.refreshContextMeter();
+
     if (this.currentNotePillTextEl) {
       this.currentNotePillTextEl.setText(
         getCurrentNoteLabel(this.app) ?? this.t("activeNote")
@@ -8823,6 +9436,82 @@ export class ContexAgentView extends ItemView {
   }
 }
 
+
+function estimateTokensFromChars(charCount: number): number {
+  if (!Number.isFinite(charCount) || charCount <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(charCount / CONTEXT_METER_CHARS_PER_TOKEN);
+}
+
+function compactModelProfileLabel(value: string): string {
+  const cleaned = value
+    .trim()
+    .replace(/^models\//iu, "")
+    .split(/[/:]/u)
+    .filter(Boolean)
+    .pop()
+    ?.replace(/\b(?:latest|preview|instruct|chat|model)\b/giu, "")
+    .replace(/[-_.]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim() ?? "Model";
+  const lower = cleaned.toLowerCase();
+
+  if (lower.includes("haiku")) {
+    return "Haiku";
+  }
+
+  if (lower.includes("sonnet")) {
+    return "Sonnet";
+  }
+
+  if (lower.includes("opus")) {
+    return "Opus";
+  }
+
+  if (lower.includes("llama")) {
+    const version = lower.match(/llama\s*(\d+(?:\.\d+)?)/u)?.[1];
+    const variant = lower.match(/\b(scout|maverick|guard)\b/u)?.[1];
+    return ["Llama", version, titleCaseWord(variant)].filter(Boolean).join(" ");
+  }
+
+  if (lower.includes("deepseek")) {
+    const version = lower.match(/\bv\d+\b/u)?.[0]?.toUpperCase();
+    const variant = lower.match(/\b(flash|reasoner|chat|coder)\b/u)?.[1];
+    return ["DeepSeek", version, titleCaseWord(variant)]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  if (lower.includes("gemma")) {
+    const version = lower.match(/gemma\s*(\d+(?:\.\d+)?)/u)?.[1];
+    const size = lower.match(/\b\d+(?:b|m)\b/u)?.[0]?.toUpperCase();
+    return ["Gemma", version, size].filter(Boolean).join(" ");
+  }
+
+  const words = cleaned
+    .split(/\s+/u)
+    .filter((word) => word.length > 0)
+    .filter((word) => !/^\d{6,}$/u.test(word))
+    .slice(0, 3)
+    .map(titleCaseWord);
+  const label = words.join(" ").trim();
+
+  return label || "Model";
+}
+
+function titleCaseWord(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (/^[a-z]?[\d.]+[a-z]*$/iu.test(value) || value.length <= 3) {
+    return value.toUpperCase();
+  }
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 
 function cleanSuggestedReplacement(content: string): string {
   const trimmed = content.trim();
@@ -9074,6 +9763,10 @@ function decideAutoWebResearch(
     return null;
   }
 
+  if (isVaultLocalDescriptionRequest(userRequest)) {
+    return null;
+  }
+
   const explicitFreshness =
     includesAny(normalized, [
       "актуальн",
@@ -9298,7 +9991,7 @@ function formatAutoWebContextForPrompt(webContext: AutoWebContext): string {
 function formatProjectMemoryForPrompt(projectMemory: string): string {
   return [
     "Project memory context:",
-    "Use this as durable background memory for the Contex project. Do not copy it verbatim unless relevant.",
+    "Use this as durable background memory for the Mindo project. Do not copy it verbatim unless relevant.",
     projectMemory
   ].join("\n");
 }
@@ -9359,8 +10052,8 @@ function sanitizeResearchTitle(title: string | undefined): string | null {
 
 function inferResearchNoteTitle(commandText: string): string {
   return sanitizeResearchTitle(
-    inferCreateNoteTitleFromCommand(commandText, "Contex Research Note")
-  ) || "Contex Research Note";
+    inferCreateNoteTitleFromCommand(commandText, "Mindo Research Note")
+  ) || "Mindo Research Note";
 }
 
 function buildContexCodePlanDraftPrompt(options: {
@@ -9368,7 +10061,7 @@ function buildContexCodePlanDraftPrompt(options: {
   markdown: string;
 }): string {
   return [
-    "Analyze the active Obsidian project note and create a practical coding plan for Contex Code.",
+    "Analyze the active Obsidian project note and create a practical coding plan for Mindo Code.",
     "Return JSON only. Do not include Markdown fences or prose.",
     "The plan must be derived from the note content, not from the file name alone.",
     "Prefer a short product/project title from the first H1 or the central idea.",
@@ -9920,6 +10613,12 @@ function isPlainOpenFileCommand(commandText: string): boolean {
   ]);
 }
 
+function isBareOpenFileCorrection(commandText: string): boolean {
+  const normalized = normalizeVoiceCommandText(commandText);
+
+  return /^(?:\u0438\u043c\u0435\u043d\u043d\u043e|\u0442\u043e\u0447\u043d\u043e)\s+[\p{L}\p{N}_ -]{2,}$/iu.test(normalized);
+}
+
 function parseVoiceOpenFileQuery(commandText: string): string | null {
   const normalized = normalizeVoiceCommandText(commandText);
 
@@ -9941,6 +10640,9 @@ function parseVoiceOpenFileQuery(commandText: string): string | null {
   }
 
   const patterns = [
+    /^(?:\u0430\s+|\u043d\u0443\s+|\u043b\u0430\u0434\u043d\u043e\s+|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430\s+)*(?:\u043e\u0442\u043a\u0440\u043e\u0439|\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0439|\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c|\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e|\u043e\u0442\u043a\u0440\u044b\u0442\u044c|\u043f\u043e\u043a\u0430\u0436\u0438|show|open)\s+(?:\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430\s+)?(?:\u043c\u043d\u0435\s+)?(?:(?:\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430|\u0442\u043e\u0447\u043d\u0435\u0435|\u0442\u043e\u0433\u0434\u0430)\s+)?(?:(?:\u0444\u0430\u0439\u043b|\u0437\u0430\u043c\u0435\u0442\u043a\u0443|\u043d\u043e\u0443\u0441|note)\s+)?([\s\S]+)$/i,
+    /^(?:\u0430\s+|\u043d\u0443\s+|\u043b\u0430\u0434\u043d\u043e\s+|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430\s+)*(?:(?:\u043c\u043e\u0436\u043d\u043e|\u043c\u043e\u0436\u0435\u0448\u044c|\u043c\u043e\u0436\u0435\u0442\u0435|can\s+you)\s+)?(?:\u043e\u0442\u043a\u0440\u044b\u0442\u044c|\u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c|open|show)\s+(?:\u043c\u043d\u0435\s+)?(?:(?:\u0444\u0430\u0439\u043b|\u0437\u0430\u043c\u0435\u0442\u043a\u0443|\u043d\u043e\u0443\u0441|note)\s+)?([\s\S]+)$/i,
+    /^(?:\u0438\u043c\u0435\u043d\u043d\u043e|\u0442\u043e\u0447\u043d\u043e)\s+([\s\S]+)$/i,
     /^(?:открой|открывай|открываем|открываю|открыть|покажи|show|open)\s+(?:пожалуйста\s+)?(?:мне\s+)?(?:(?:пожалуйста|точнее|тогда)\s+)?(?:(?:файл|заметку|ноус|note)\s+)?([\s\S]+)$/i,
     /^(?:можешь\s+)?(?:открыть|показать)\s+(?:мне\s+)?(?:(?:файл|заметку|ноус)\s+)?([\s\S]+)$/i
   ];
@@ -10314,6 +11016,8 @@ function shouldRouteThroughSemanticIntentRouter(
   }
 
   return (
+    isBareOpenFileCorrection(commandText) ||
+    isBareOpenFileCorrection(effectiveCommandText) ||
     shouldTrySemanticLocalCommand(commandText) ||
     shouldTrySemanticLocalCommand(effectiveCommandText) ||
     hasLocalCommandActionMarker(commandText) ||

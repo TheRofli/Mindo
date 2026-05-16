@@ -37,7 +37,7 @@ assert.equal(
   stripDuplicateLeadingTitle(
     "Modern Local LLM Features 2026\n\nBody",
     "Modern Local LLM Features 2026",
-    "Contex Inbox/Modern Local LLM Features 2026.md"
+    "Mindo Inbox/Modern Local LLM Features 2026.md"
   ),
   "Body"
 );

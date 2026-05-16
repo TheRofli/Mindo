@@ -79,6 +79,11 @@ export interface SearchAction
   query: string;
 }
 
+export interface UpdateNoteAction extends BaseContexAction<"update_note"> {
+  sourcePath?: string;
+  query?: string;
+}
+
 export interface ReadAnswerAction extends BaseContexAction<"read_answer"> {
   target: "latest_assistant" | "latest_file" | "selected_text";
 }
@@ -101,6 +106,7 @@ export type ContexAction =
   | ReplaceSelectionAction
   | DiffAction
   | SearchAction
+  | UpdateNoteAction
   | ReadAnswerAction
   | WikiUpdateAction
   | NoneAction;

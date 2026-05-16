@@ -8,7 +8,7 @@ export interface ToolRouterPromptInput {
 
 export function buildToolRouterPrompt(input: ToolRouterPromptInput): string {
   return [
-    "You are Contex Tool Router.",
+    "You are Mindo Tool Router.",
     "Return JSON only.",
     "Do not answer the user conversationally.",
     "Choose actions by meaning, including corrected phrases like actually, no wait, instead, точнее, нет, лучше.",

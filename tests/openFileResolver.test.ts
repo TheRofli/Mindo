@@ -40,4 +40,25 @@ const splitPhoneticFileName = rankOpenFilePathCandidates(
 
 assert.equal(splitPhoneticFileName[0]?.path, "Obsidian/Milanote.md");
 
+const qoreVoicePaths = [
+  "Proton/Qore Systems Cases.md",
+  "Proton/Qore Systems Strategy.md",
+  "Proton/qquark-app.md"
+];
+
+assert.equal(
+  rankOpenFilePathCandidates(
+    qoreVoicePaths,
+    "qore systems strategy"
+  )[0]?.path,
+  "Proton/Qore Systems Strategy.md"
+);
+assert.equal(
+  rankOpenFilePathCandidates(
+    qoreVoicePaths,
+    "qquark app"
+  )[0]?.path,
+  "Proton/qquark-app.md"
+);
+
 console.log("openFileResolver tests passed");

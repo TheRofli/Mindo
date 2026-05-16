@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DEFAULT_SETTINGS } from "../src/types";
 import {
   DEFAULT_SILERO_VOICE,
   SILERO_VOICE_OPTIONS,
@@ -6,7 +7,8 @@ import {
   getSileroVoiceModelConfig
 } from "../src/voice/sileroVoices";
 
-assert.equal(DEFAULT_SILERO_VOICE, "baya");
+assert.equal(DEFAULT_SILERO_VOICE, "eugene");
+assert.equal(DEFAULT_SETTINGS.sileroVoice, DEFAULT_SILERO_VOICE);
 assert.ok(SUPPORTED_SILERO_VOICES.has("baya"));
 assert.ok(SUPPORTED_SILERO_VOICES.has("eugene"));
 

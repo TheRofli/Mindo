@@ -56,8 +56,8 @@ export function buildCreateNoteFromSelectionPrompt(selectedText: string): string
   return [
     "Create a new Markdown note from the selected text.",
     "Return JSON only with this shape:",
-    '{"title":"...","path":"Contex Inbox/... .md","content":"..."}',
-    "Use a concise title. Put the note under Contex Inbox. Do not include code fences.",
+    '{"title":"...","path":"Mindo Inbox/... .md","content":"..."}',
+    "Use a concise title. Put the note under Mindo Inbox. Do not include code fences.",
     "",
     "Selected text:",
     selectedText
@@ -172,7 +172,7 @@ export function buildRefineCreateNotePrompt(
   return [
     "Revise the proposed Markdown note based on the user's instruction.",
     "Return JSON only with this shape:",
-    '{"title":"...","path":"Contex Inbox/... .md","content":"..."}',
+    '{"title":"...","path":"Mindo Inbox/... .md","content":"..."}',
     "Keep the note useful, concise, and in Markdown. Do not include code fences.",
     "",
     "Selected source text:",

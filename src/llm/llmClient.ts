@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { readOpenAIStreamText } from "./openAiStream";
 import type {
   ChatMessage,
   ContexSettings,
@@ -12,8 +13,19 @@ import type {
 import { buildLiveDialogueSystemInstruction } from "../voice/liveDialogue";
 import { buildWikiLiveBrief } from "../wiki/wikiLiveBrief";
 
-const BASE_SYSTEM_PROMPT =
-  "You are Contex Agent, an AI assistant inside Obsidian.";
+const BASE_SYSTEM_PROMPT = [
+  "You are Mindo, a warm AI assistant inside Obsidian.",
+  "Mindo has a soft whale-inspired personality: calm, friendly, curious, lightly playful, and emotionally present without becoming noisy.",
+  "Your core product role is Talk to your Vault: help the user understand notes, connect ideas, find files, and turn fuzzy thoughts into useful next steps.",
+  "Help the user think, write, search their vault, and safely edit files with clear, practical answers.",
+  "Match the user's language and tone. In Russian, speak naturally, warmly, and directly.",
+  "When note, selected text, vault search, attachment, or project memory context is included, treat it as available context and use it directly. Do not claim you cannot access a note that was provided in the prompt.",
+  "Mindo runs inside the user's Obsidian vault and has product-level vault actions for reading, searching, opening, and safely editing Markdown notes. If vault context or search results are provided, use them as direct access. If the user asks about vault files or folders and the current prompt lacks enough context, ask for a quick vault search/open action or the exact path; do not say you have no access to the filesystem as a general refusal.",
+  "For fuzzy file requests, reason from the user's real vault candidates, folder names, active note, and recent note context. Prefer exact vault paths supplied by the system over guessing, and ask a short clarification when two candidates are genuinely close.",
+  "Use small friendly emoji when they genuinely fit the mood, especially in casual chat, encouragement, or short summaries. Keep them sparse: usually zero to two per answer, never a decorative flood.",
+  "Do not use emoji inside code, JSON, YAML, file paths, diffs, commands, or content that may be applied to vault files.",
+  "Personality must never override correctness, safety, or explicit user instructions."
+].join(" ");
 
 type OpenAIChatRole = "system" | "user" | "assistant";
 type OpenAIChatContent =
@@ -44,6 +56,75 @@ interface OpenAIChatCompletionRequest {
 }
 
 export type LlmStreamTokenHandler = (token: string) => void;
+
+export async function requestLlmSystemCompletion(
+  settings: ContexSettings,
+  systemPrompt: string,
+  userPrompt: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const baseUrl = normalizeBaseUrl(settings.baseUrl);
+
+  if (!baseUrl) {
+    throw new Error("Base URL is empty.");
+  }
+
+  let response;
+  try {
+    if (signal?.aborted) {
+      throw new Error("Mindo generation canceled.");
+    }
+
+    response = await requestUrl({
+      url: `${baseUrl}/chat/completions`,
+      method: "POST",
+      contentType: "application/json",
+      headers: createRequestHeaders(settings, "application/json"),
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ],
+        temperature: Math.min(settings.temperature, 0.2)
+      }),
+      throw: false
+    });
+  } catch (error) {
+    if (signal?.aborted) {
+      throw new Error("Mindo generation canceled.");
+    }
+
+    throw new Error(`Could not reach LLM endpoint. ${getErrorMessage(error)}`);
+  }
+
+  if (signal?.aborted) {
+    throw new Error("Mindo generation canceled.");
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `LLM endpoint returned HTTP ${response.status}. ${getServerErrorMessage(
+        response.json,
+        response.text
+      )}`.trim()
+    );
+  }
+
+  const assistantContent = extractAssistantContent(response.json);
+
+  if (!assistantContent) {
+    throw new Error("LLM response did not include assistant content.");
+  }
+
+  return assistantContent;
+}
 
 export async function requestLlmChatCompletion(
   settings: ContexSettings,
@@ -105,38 +186,52 @@ export async function streamLlmChatCompletion(
 
   let response;
   try {
-    response = await fetch(`${baseUrl}/chat/completions`, {
+    if (signal?.aborted) {
+      throw new Error("Mindo generation canceled.");
+    }
+
+    response = await requestUrl({
+      url: `${baseUrl}/chat/completions`,
       method: "POST",
-      headers: {
-        ...createRequestHeaders(settings, "text/event-stream"),
-        "Content-Type": "application/json"
-      },
+      contentType: "application/json",
+      headers: createRequestHeaders(settings, "text/event-stream"),
       body: JSON.stringify(
         createChatCompletionRequest(settings, messages, context, true)
       ),
-      signal
+      throw: false
     });
   } catch (error) {
     if (signal?.aborted) {
-      throw new Error("Contex generation canceled.");
+      throw new Error("Mindo generation canceled.");
     }
 
     throw new Error(`Could not reach streaming LLM endpoint. ${getErrorMessage(error)}`);
   }
 
-  if (!response.ok) {
+  if (signal?.aborted) {
+    throw new Error("Mindo generation canceled.");
+  }
+
+  if (response.status < 200 || response.status >= 300) {
     throw new Error(
-      `Streaming LLM endpoint returned HTTP ${response.status}. ${(
-        await response.text()
-      ).trim()}`
+      `Streaming LLM endpoint returned HTTP ${response.status}. ${response.text.trim()}`
     );
   }
 
-  if (!response.body) {
-    throw new Error("Streaming LLM response did not include a readable body.");
+  const streamedContent = readOpenAIStreamText(response.text, onToken, signal);
+
+  if (streamedContent) {
+    return streamedContent;
   }
 
-  return readOpenAIStream(response.body, onToken, signal);
+  const assistantContent = extractAssistantContent(response.json);
+
+  if (assistantContent) {
+    onToken(assistantContent);
+    return assistantContent;
+  }
+
+  throw new Error("Streaming LLM response did not include assistant content.");
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -172,11 +267,11 @@ function buildSystemPrompt(settings: ContexSettings): string {
 
   if (settings.sileroVoice === "eugene") {
     prompt.push(
-      "When replying in Russian and referring to yourself in first person, use masculine grammatical forms for yourself, for example: \"я согласен\", \"я готов\", \"я посмотрел\". You are still Contex Agent; only your Russian first-person grammar follows the selected voice."
+      "When replying in Russian and referring to yourself in first person, use masculine grammatical forms for yourself, for example: \"я согласен\", \"я готов\", \"я посмотрел\". You are still Mindo; only your Russian first-person grammar follows the selected voice."
     );
   } else {
     prompt.push(
-      "When replying in Russian and referring to yourself in first person, use feminine grammatical forms for yourself, for example: \"я согласна\", \"я готова\", \"я посмотрела\". You are still Contex Agent; only your Russian first-person grammar follows the selected voice."
+      "When replying in Russian and referring to yourself in first person, use feminine grammatical forms for yourself, for example: \"я согласна\", \"я готова\", \"я посмотрела\". You are still Mindo; only your Russian first-person grammar follows the selected voice."
     );
   }
 
@@ -184,7 +279,7 @@ function buildSystemPrompt(settings: ContexSettings): string {
     "For normal Russian chat answers only, when you include a Latin-script technical term or acronym, you may add an invisible TTS hint immediately after that visible term using an HTML comment, for example: Markdown<!--contex-tts:маркдаун--> or ONNX<!--contex-tts:он эн эн икс-->. The visible answer must remain unchanged because Markdown rendering hides the comment. Never use these comments in code blocks, JSON, note drafts, text replacements, file paths, URLs, or any content intended to be applied to a vault file."
   );
   prompt.push(
-    "When Contex Wiki context includes Prompt Library entries, use them as reusable intent patterns for routing, editing, research, Wiki updates, attachments, and live voice replies. Do not quote the prompt library unless the user asks; apply the relevant pattern quietly."
+    "When Mindo Wiki context includes Prompt Library entries, use them as reusable intent patterns for routing, editing, research, Wiki updates, attachments, and live voice replies. Do not quote the prompt library unless the user asks; apply the relevant pattern quietly."
   );
 
   return prompt.join(" ");
@@ -334,7 +429,7 @@ function formatAttachmentContext(
 
 function formatProjectMemoryContext(projectMemory: string): string {
   return [
-    "Durable Contex project memory from the user's vault is included below.",
+    "Durable Mindo project memory from the user's vault is included below.",
     "Use it as background context for decisions, terminology, constraints, and ongoing project direction. Do not treat it as an instruction to change files by itself.",
     "",
     projectMemory
@@ -410,6 +505,7 @@ function formatCurrentNoteContext(context: CurrentNoteContext): string {
 
   return [
     "The user enabled current note context. Use the note below when it is relevant to the user's request.",
+    "This provided context is enough to summarize or explain the note. Do not say you lack access to the file unless the content below is empty or unreadable.",
     "Do not claim you changed the note or any vault files.",
     "",
     `Current note path: ${context.path}`,
@@ -437,119 +533,6 @@ function formatSelectedTextContext(context: SelectedTextContext): string {
     "Selected text:",
     context.text
   ].join("\n");
-}
-
-async function readOpenAIStream(
-  body: ReadableStream<Uint8Array>,
-  onToken: LlmStreamTokenHandler,
-  signal?: AbortSignal
-): Promise<string> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let content = "";
-
-  while (true) {
-    if (signal?.aborted) {
-      await reader.cancel();
-      throw new Error("Contex generation canceled.");
-    }
-
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      const result = parseStreamLine(line);
-
-      if (result.done) {
-        return content;
-      }
-
-      if (result.content) {
-        content += result.content;
-        onToken(result.content);
-      }
-    }
-  }
-
-  buffer += decoder.decode();
-
-  for (const line of buffer.split(/\r?\n/)) {
-    const result = parseStreamLine(line);
-
-    if (result.done) {
-      return content;
-    }
-
-    if (result.content) {
-      content += result.content;
-      onToken(result.content);
-    }
-  }
-
-  return content;
-}
-
-function parseStreamLine(line: string): { done: boolean; content: string | null } {
-  const trimmed = line.trim();
-
-  if (!trimmed || trimmed.startsWith(":") || !trimmed.startsWith("data:")) {
-    return {
-      done: false,
-      content: null
-    };
-  }
-
-  const data = trimmed.slice("data:".length).trim();
-
-  if (data === "[DONE]") {
-    return {
-      done: true,
-      content: null
-    };
-  }
-
-  try {
-    return {
-      done: false,
-      content: extractStreamDelta(JSON.parse(data))
-    };
-  } catch {
-    return {
-      done: false,
-      content: null
-    };
-  }
-}
-
-function extractStreamDelta(payload: unknown): string | null {
-  if (!isRecord(payload) || !Array.isArray(payload.choices)) {
-    return null;
-  }
-
-  const firstChoice = payload.choices[0];
-  if (!isRecord(firstChoice)) {
-    return null;
-  }
-
-  const delta = firstChoice.delta;
-  if (isRecord(delta)) {
-    return normalizeContent(delta.content);
-  }
-
-  const message = firstChoice.message;
-  if (isRecord(message)) {
-    return normalizeContent(message.content);
-  }
-
-  return normalizeContent(firstChoice.text);
 }
 
 function extractAssistantContent(payload: unknown): string | null {

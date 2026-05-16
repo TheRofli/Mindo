@@ -18,7 +18,7 @@ assert.equal(
   sanitizeCreateNoteFilename("Plan for Contex.md", "# Ignored"),
   "Plan for Contex.md"
 );
-assert.equal(normalizeCreateNotePath("Plan"), "Contex Inbox/Plan.md");
+assert.equal(normalizeCreateNotePath("Plan"), "Mindo Inbox/Plan.md");
 assert.equal(normalizeCreateNotePath("Obsidian/Plan"), "Obsidian/Plan.md");
 assert.equal(isSafeCreateNotePath("Obsidian/Plan.md"), true);
 assert.equal(isSafeCreateNotePath("Obsidian/```json.md"), false);

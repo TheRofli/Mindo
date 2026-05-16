@@ -7,6 +7,7 @@ import {
   type ContexCodeCommandOptions
 } from "./planCommands";
 import type { ContexCodeActionResult, ContexCodePlan } from "./planTypes";
+import type { UiLanguage } from "../i18n";
 import {
   createContexCodeWikiEventWriter,
   type ContexCodeWikiEventWriterSettings
@@ -15,7 +16,8 @@ import {
 export class ContexCodeCommandController {
   constructor(
     private readonly app: ContexCodeAppLike,
-    private readonly settings: ContexCodeWikiEventWriterSettings
+    private readonly settings: ContexCodeWikiEventWriterSettings,
+    private readonly language?: UiLanguage
   ) {}
 
   createPlan(
@@ -44,8 +46,9 @@ export class ContexCodeCommandController {
   ): ContexCodeCommandOptions {
     return {
       ...options,
+      language: options.language ?? this.language,
       wikiWriter: createContexCodeWikiEventWriter(
-        this.app as never,
+        this.app,
         this.settings
       )
     };

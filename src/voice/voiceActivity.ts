@@ -21,20 +21,20 @@ export interface VoiceActivityTuning {
 
 export const LIVE_TURN_VOICE_ACTIVITY: VoiceActivityTuning = {
   speechThreshold: 0.045,
-  silenceMs: 2800,
-  minSpeechMs: 520,
+  silenceMs: 2000,
+  minSpeechMs: 420,
   minSpeechFrames: 3,
   confirmationMs: 180,
   confirmationFrames: 2
 };
 
 export const LIVE_BARGE_IN_VOICE_ACTIVITY: VoiceActivityTuning = {
-  speechThreshold: 0.055,
-  silenceMs: 900,
-  minSpeechMs: 180,
-  minSpeechFrames: 2,
-  confirmationMs: 70,
-  confirmationFrames: 2
+  speechThreshold: 0.042,
+  silenceMs: 1200,
+  minSpeechMs: 120,
+  minSpeechFrames: 1,
+  confirmationMs: 40,
+  confirmationFrames: 1
 };
 
 export type VoiceActivityEvent =

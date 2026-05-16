@@ -1,7 +1,7 @@
 {
   "name": "contex-agent",
   "version": "0.1.0",
-  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Contex Code.",
+  "description": "Talk to your vault with local voice, RAG, Wiki memory, safe edits, and Mindo Code.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",
@@ -26,9 +26,9 @@
   "keywords": [
     "obsidian",
     "plugin",
-    "contex-agent"
+    "mindo"
   ],
-  "author": "Contex",
+  "author": "Mindo",
   "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
     "@types/node": "^20.12.7",

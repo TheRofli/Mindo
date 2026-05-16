@@ -35,7 +35,7 @@ export async function recordAiChangeOperation(
   app: App,
   params: RecordAiChangeOperationParams
 ): Promise<AiChangeOperation> {
-  assertWritableVaultPath(params.filePath);
+  assertWritableVaultPath(params.filePath, app.vault.configDir);
   await ensureHistoryFile(app);
 
   const operation: AiChangeOperation = {
@@ -93,7 +93,7 @@ export async function rollbackAiChangeOperation(
     throw new Error("AI change operation is not currently applied.");
   }
 
-  assertWritableVaultPath(operation.filePath);
+  assertWritableVaultPath(operation.filePath, app.vault.configDir);
 
   const file = getHistoryOperationFile(app, operation.filePath);
   const currentContent = await app.vault.read(file);
@@ -105,7 +105,7 @@ export async function rollbackAiChangeOperation(
   }
 
   if (operation.operationType === "create-note" && operation.beforeContent === "") {
-    await app.vault.delete(file);
+    await app.fileManager.trashFile(file);
   } else {
     await app.vault.modify(file, operation.beforeContent);
   }
@@ -121,12 +121,15 @@ export async function rollbackAiChangeOperation(
   return updatedOperation;
 }
 
-export function assertWritableVaultPath(path: string): void {
+export function assertWritableVaultPath(
+  path: string,
+  configDir: string
+): void {
   const normalizedPath = normalizePath(path).toLowerCase();
+  const normalizedConfigDir = normalizePath(configDir).toLowerCase();
 
   if (
-    normalizedPath === ".obsidian" ||
-    normalizedPath.startsWith(".obsidian/") ||
+    isPathOrChild(normalizedPath, normalizedConfigDir) ||
     normalizedPath === ".git" ||
     normalizedPath.startsWith(".git/") ||
     normalizedPath === HISTORY_DIR ||
@@ -134,6 +137,10 @@ export function assertWritableVaultPath(path: string): void {
   ) {
     throw new Error(`Protected path cannot be modified: ${path}`);
   }
+}
+
+function isPathOrChild(path: string, parentPath: string): boolean {
+  return path === parentPath || path.startsWith(`${parentPath}/`);
 }
 
 export async function readAiChangeOperations(

@@ -1,13 +1,16 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type ContexAgentPlugin from "./main";
+import { ModelProfilesModal } from "./modals/ModelProfilesModal";
 import {
   DEFAULT_SETTINGS,
+  type DialogueModelMode,
   type LlmModelProfile,
   type SttBackend,
   type SttModel,
   type SttQualityMode,
   type TtsProvider,
   type TtsReadMode,
+  type UiFontMode,
   type WebSearchProvider,
   type WikiMemoryMode
 } from "./types";
@@ -59,9 +62,10 @@ export class ContexSettingTab extends PluginSettingTab {
     const language = getUiLanguageFromObsidianApp(this.app);
     this.activeSection = sanitizeContexSettingsSection(this.activeSection);
 
-    containerEl.createEl("h2", { text: getUiText(language, "appName") });
+    new Setting(containerEl).setName(getUiText(language, "appName")).setHeading();
     this.renderSectionTabs(containerEl);
     const modelSectionEl = this.createSection(containerEl, "model");
+    const dialogueSectionEl = this.createSection(containerEl, "dialogue");
     const voiceSectionEl = this.createSection(containerEl, "voice");
     const webSectionEl = this.createSection(containerEl, "web");
     const wikiSectionEl = this.createSection(containerEl, "wiki");
@@ -70,7 +74,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(modelSectionEl)
       .setName("Model Profile")
-      .setDesc("Saved LLM endpoint/profile used by Contex.")
+      .setDesc("Saved LLM endpoint/profile used by Mindo.")
       .addDropdown((dropdown) => {
         this.plugin.settings.modelProfiles.forEach((profile) => {
           dropdown.addOption(profile.id, profile.name);
@@ -111,6 +115,21 @@ export class ContexSettingTab extends PluginSettingTab {
             this.plugin.settings.activeModelProfileId = profile.id;
             await this.plugin.saveSettings();
             this.display();
+          })
+      )
+      .addButton((button) =>
+        button
+          .setButtonText("Manage")
+          .setTooltip("Create, edit, and delete model profiles")
+          .onClick(() => {
+            new ModelProfilesModal(this.app, {
+              settings: this.plugin.settings,
+              onSave: async (settings) => {
+                this.plugin.settings = settings;
+                await this.plugin.saveSettings();
+                this.display();
+              }
+            }).open();
           })
       );
 
@@ -211,6 +230,111 @@ export class ContexSettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(modelSectionEl)
+      .setName("Auto Apply Edits")
+      .setDesc("When enabled, Mindo applies generated edit previews to vault files immediately. Change history can still revert applied edits.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoApplyEdits)
+          .onChange(async (value) => {
+            this.plugin.settings.autoApplyEdits = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(modelSectionEl)
+      .setName("Interface Font")
+      .setDesc("Use Comfortaa for Mindo's softer rounded style, or inherit Obsidian's interface font.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("comfortaa", "Comfortaa")
+          .addOption("obsidian", "Obsidian default")
+          .setValue(this.plugin.settings.uiFont)
+          .onChange(async (value) => {
+            this.plugin.settings.uiFont = value as UiFontMode;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    const dialogueFastProfileId = this.getExistingModelProfileId(
+      this.plugin.settings.dialogueFastModelProfileId
+    );
+    const dialogueSmartProfileId = this.getExistingModelProfileId(
+      this.plugin.settings.dialogueSmartModelProfileId
+    );
+
+    new Setting(dialogueSectionEl)
+      .setName("Dialogue Model Routing")
+      .setDesc("Use one model for live dialogue, or split quick replies and deeper reasoning across two model profiles.")
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("single", "Single profile")
+          .addOption("dual", "Fast + Smart profiles")
+          .setValue(this.plugin.settings.dialogueModelMode)
+          .onChange(async (value) => {
+            this.plugin.settings.dialogueModelMode =
+              (value === "dual" ? "dual" : "single") as DialogueModelMode;
+            await this.plugin.saveSettings();
+            this.display();
+          })
+      );
+
+    new Setting(dialogueSectionEl)
+      .setName("Fast Dialogue Profile")
+      .setDesc("Used for lightweight live answers, file lookup, short summaries, and conversational replies.")
+      .addDropdown((dropdown) => {
+        this.plugin.settings.modelProfiles.forEach((profile) => {
+          dropdown.addOption(profile.id, profile.name);
+        });
+
+        dropdown
+          .setValue(dialogueFastProfileId)
+          .onChange(async (value) => {
+            this.plugin.settings.dialogueFastModelProfileId =
+              this.getExistingModelProfileId(value);
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(dialogueSectionEl)
+      .setName("Smart Dialogue Profile")
+      .setDesc("Used when a live request looks complex: deep analysis, code/file edits, planning, research, or long reasoning.")
+      .addDropdown((dropdown) => {
+        this.plugin.settings.modelProfiles.forEach((profile) => {
+          dropdown.addOption(profile.id, profile.name);
+        });
+
+        dropdown
+          .setValue(dialogueSmartProfileId)
+          .onChange(async (value) => {
+            this.plugin.settings.dialogueSmartModelProfileId =
+              this.getExistingModelProfileId(value);
+            await this.plugin.saveSettings();
+          });
+      })
+      .addButton((button) =>
+        button
+          .setButtonText("Manage profiles")
+          .setTooltip("Create, edit, and delete model profiles")
+          .onClick(() => {
+            new ModelProfilesModal(this.app, {
+              settings: this.plugin.settings,
+              onSave: async (settings) => {
+                this.plugin.settings = settings;
+                await this.plugin.saveSettings();
+                this.display();
+              }
+            }).open();
+          })
+      );
+
+    dialogueSectionEl.createEl("small", {
+      text:
+        this.plugin.settings.dialogueModelMode === "dual"
+          ? "Recommended: keep the fast profile cheap and responsive, and reserve the smart profile for harder live dialogue turns."
+          : "Default: Mindo uses the active model profile for both quick and deeper live dialogue turns."
+    });
+
     new Setting(webSectionEl)
       .setName("Web Search")
       .setDesc("Enable web research through a SearXNG-compatible endpoint.")
@@ -225,7 +349,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(webSectionEl)
       .setName("Web Search Provider")
-      .setDesc("Provider used by Contex web research.")
+      .setDesc("Provider used by Mindo web research.")
       .addDropdown((dropdown) =>
         dropdown
           .addOption("searxng", "SearXNG")
@@ -252,7 +376,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(webSectionEl)
       .setName("Web Search Max Results")
-      .setDesc("How many web results Contex should use for research.")
+      .setDesc("How many web results Mindo should use for research.")
       .addText((text) => {
         text.inputEl.type = "number";
         text.inputEl.min = "1";
@@ -272,7 +396,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(wikiSectionEl)
       .setName("Wiki Layer")
-      .setDesc("Enable Contex Wiki as durable structured memory.")
+      .setDesc("Enable Mindo Wiki as durable structured memory.")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.wikiEnabled)
@@ -284,7 +408,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(wikiSectionEl)
       .setName("Wiki Root Folder")
-      .setDesc("Folder where Contex keeps Raw, Wiki, Schema, and Inbox.")
+      .setDesc("Folder where Mindo keeps Raw, Wiki, Schema, and Inbox.")
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.wikiRootFolder)
@@ -298,7 +422,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(wikiSectionEl)
       .setName("Wiki Memory Mode")
-      .setDesc("How aggressively Contex proposes durable Wiki updates.")
+      .setDesc("How aggressively Mindo proposes durable Wiki updates.")
       .addDropdown((dropdown) =>
         dropdown
           .addOption("manual", "Manual")
@@ -312,7 +436,7 @@ export class ContexSettingTab extends PluginSettingTab {
       );
 
     new Setting(wikiSectionEl)
-      .setName("Contex Wiki Initial Build")
+      .setName("Mindo Wiki Initial Build")
       .setDesc("Create or repair the Wiki folders, schema files, prompt library, and maintenance files.")
       .addButton((button) =>
         button
@@ -320,13 +444,13 @@ export class ContexSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(async () => {
             const status = await ensureContexWikiStructure(
-              this.app as never,
+              this.app,
               this.plugin.settings
             );
             new Notice(
               status.initialized
-                ? `Contex Wiki is ready at ${status.root}.`
-                : `Contex Wiki still has ${status.missingFolders.length + status.missingFiles.length} missing items.`
+                ? `Mindo Wiki is ready at ${status.root}.`
+                : `Mindo Wiki still has ${status.missingFolders.length + status.missingFiles.length} missing items.`
             );
           })
       )
@@ -335,20 +459,20 @@ export class ContexSettingTab extends PluginSettingTab {
           .setButtonText("Check status")
           .onClick(async () => {
             const status = await getContexWikiStatus(
-              this.app as never,
+              this.app,
               this.plugin.settings
             );
             new Notice(
               status.initialized
-                ? `Contex Wiki is initialized at ${status.root}.`
-                : `Contex Wiki is not initialized. Missing ${status.missingFolders.length} folders and ${status.missingFiles.length} files.`
+                ? `Mindo Wiki is initialized at ${status.root}.`
+                : `Mindo Wiki is not initialized. Missing ${status.missingFolders.length} folders and ${status.missingFiles.length} files.`
             );
           })
       );
 
     new Setting(voiceSectionEl)
       .setName("STT Endpoint")
-      .setDesc("Speech-to-text endpoint. Contex sends recorded audio as multipart form data.")
+      .setDesc("Speech-to-text endpoint. Mindo sends recorded audio as multipart form data.")
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.sttEndpoint)
@@ -383,7 +507,7 @@ export class ContexSettingTab extends PluginSettingTab {
 
     new Setting(voiceSectionEl)
       .setName("Auto-start Local STT")
-      .setDesc("Start the bundled local STT helper for the selected backend when Contex loads.")
+      .setDesc("Start the bundled local STT helper for the selected backend when Mindo loads.")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.autoStartLocalStt)
@@ -645,6 +769,12 @@ export class ContexSettingTab extends PluginSettingTab {
     return sectionEl;
   }
 
+  private getExistingModelProfileId(value: string): string {
+    return this.plugin.settings.modelProfiles.some((profile) => profile.id === value)
+      ? value
+      : getActiveModelProfile(this.plugin.settings).id;
+  }
+
   private syncActiveModelProfile(patch: Partial<LlmModelProfile>): void {
     const sanitized = sanitizeModelProfiles(this.plugin.settings);
     this.plugin.settings.modelProfiles = sanitized.profiles;
@@ -662,8 +792,8 @@ export class ContexSettingTab extends PluginSettingTab {
   private async testSpeech(language: "english" | "silero"): Promise<void> {
     let text =
       language === "english"
-        ? "Hello, I am Contex. This is the selected English voice."
-        : "Привет, я Contex. Проверяю выбранный русский голос.";
+        ? "Hello, I am Mindo. This is the selected English voice."
+        : "Привет, я Mindo. Проверяю выбранный русский голос.";
 
     try {
       let audioBlob: Blob;

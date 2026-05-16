@@ -14,13 +14,13 @@ export function buildTaskPacket(
 ): string {
   const found = findTask(plan, taskId);
   if (!found) {
-    throw new Error(`Contex Code task not found: ${taskId}`);
+    throw new Error(`Mindo Code task not found: ${taskId}`);
   }
 
   const sourceById = new Map(plan.sources.map((source) => [source.id, source]));
   const taskSources = resolveTaskSources(found.task, sourceById);
   const lines = [
-    "# Contex Code Task Packet",
+    "# Mindo Code Task Packet",
     "",
     `Plan: ${plan.title}`,
     `Plan ID: ${plan.id}`,
@@ -55,7 +55,7 @@ export function buildTaskPacket(
           "## Working Rules",
           "- Keep changes scoped to this task.",
           "- Do not revert unrelated user work.",
-          "- Update the Contex Code plan when the task is done."
+          "- Update the Mindo Code plan when the task is done."
         ])
   ];
 

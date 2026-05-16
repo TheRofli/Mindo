@@ -46,11 +46,11 @@ export async function searchWithRustCore(
       request,
       options.timeoutMs ?? DEFAULT_RUST_CORE_TIMEOUT_MS
     );
-    const parsed = JSON.parse(stdout) as unknown;
+    const parsed: unknown = JSON.parse(stdout);
 
     return parseRustCoreSearchResponse(parsed);
   } catch (error) {
-    console.warn("[Contex Agent] Rust core search unavailable", error);
+    console.warn("[Mindo] Rust core search unavailable", error);
     return null;
   }
 }

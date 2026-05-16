@@ -31,6 +31,46 @@ const pdfAttachment = await attachmentController.readAttachment(
 );
 assert.equal(pdfAttachment.text, "Rubric");
 
+const duplicateClipboardFile = new File(["same"], "same.txt", {
+  type: "text/plain"
+});
+const unnamedClipboardImage = new File(["png"], "", {
+  type: "image/png"
+});
+const extractedClipboardFiles = attachmentController.extractClipboardFiles({
+  files: [duplicateClipboardFile],
+  items: [
+    {
+      kind: "file",
+      getAsFile: () => duplicateClipboardFile
+    },
+    {
+      kind: "string",
+      getAsFile: () => null
+    },
+    {
+      kind: "file",
+      getAsFile: () => unnamedClipboardImage
+    }
+  ]
+});
+assert.equal(extractedClipboardFiles.length, 2);
+assert.equal(extractedClipboardFiles[0].name, "same.txt");
+assert.match(extractedClipboardFiles[1].name, /^clipboard-\d+\.png$/);
+
+const preparedAttachments = await attachmentController.prepareAttachedFiles(
+  [new File(["one"], "one.txt", { type: "text/plain" })],
+  Array.from({ length: 8 }, (_, index) => ({
+    name: `old-${index}.txt`,
+    type: "text/plain",
+    size: 1,
+    text: "old"
+  }))
+);
+assert.equal(preparedAttachments.newAttachments.length, 1);
+assert.equal(preparedAttachments.attachedFiles.length, 8);
+assert.equal(preparedAttachments.attachedFiles.at(-1)?.name, "one.txt");
+
 const chatController = new ChatController();
 const userMessage = chatController.createUserMessage("  hello  ", 3, [
   textAttachment
@@ -141,6 +181,54 @@ assert.equal(
     bargeInActivity
   ),
   false
+);
+assert.deepEqual(
+  liveDialogueController.resolveBargeInTranscript({
+    transcript: "  wait open another note  ",
+    assistantText: "I am still answering the previous question.",
+    isLiveDialogueActive: true,
+    isAssistantBusy: true,
+    isRecording: false,
+    isAlreadyHandling: false,
+    now: 3000,
+    lastHandledAt: 0
+  }),
+  {
+    kind: "prompt",
+    prompt: "wait open another note"
+  }
+);
+assert.deepEqual(
+  liveDialogueController.resolveBargeInTranscript({
+    transcript: "stop",
+    assistantText: "I am still answering the previous question.",
+    isLiveDialogueActive: true,
+    isAssistantBusy: true,
+    isRecording: false,
+    isAlreadyHandling: false,
+    now: 3000,
+    lastHandledAt: 0
+  }),
+  {
+    kind: "stop",
+    prompt: "stop"
+  }
+);
+assert.deepEqual(
+  liveDialogueController.resolveBargeInTranscript({
+    transcript: "wait open another note",
+    assistantText: "I am still answering the previous question.",
+    isLiveDialogueActive: true,
+    isAssistantBusy: true,
+    isRecording: false,
+    isAlreadyHandling: true,
+    now: 3000,
+    lastHandledAt: 0
+  }),
+  {
+    kind: "ignore",
+    prompt: ""
+  }
 );
 
 const modelProfileController = new ModelProfileController();

@@ -12,12 +12,13 @@ export function createLiveDialogueGreeting(): string {
 
 export function buildLiveDialogueSystemInstruction(): string {
   return [
-    "You are in Contex Live Dialogue mode.",
+    "You are in Mindo Live Dialogue mode.",
     "Reply like a spoken assistant, not like a long document.",
     "Keep answers concise, warm, and easy to listen to.",
     "Keep normal replies under 45 words unless the user explicitly asks for a long explanation.",
     "Prefer one short paragraph or 2-3 very short bullets.",
     "If the user asks what is in the current note or says things like \"перескажи\", \"что здесь\", \"what is here\", summarize the note instead of reading it verbatim.",
+    "If current note context is provided, treat it as direct access to that note's text: summarize, explain, or answer from it, and do not say you lack access to the file.",
     "Prefer 2-5 short spoken points for note summaries.",
     "Never read a whole note aloud unless the user explicitly asks for exact full text.",
     "If the user asks for a long task, briefly say what you will do, perform the action, then give a short spoken result.",
@@ -200,26 +201,26 @@ export function buildLiveDialogueActionSpeech(
   }
 
   if (receipt.status === "failed") {
-    return "Не смогла безопасно выполнить это действие. Уточни файл, папку или текст, и я попробую ещё раз.";
+    return "Не смог безопасно выполнить это действие. Уточни файл, папку или текст, и я попробую ещё раз.";
   }
 
   const label = receipt.label.toLowerCase();
   const path = receipt.path ? ` ${receipt.path}` : "";
 
   if (label.includes("open")) {
-    return `Открыла файл${path}. Что дальше?`;
+    return `Открыл файл${path}. Что дальше?`;
   }
 
   if (label.includes("created") || label.includes("saved")) {
-    return `Создала заметку${path}. Что добавить или поменять?`;
+    return `Создал заметку${path}. Что добавить или поменять?`;
   }
 
   if (label.includes("applied") || label.includes("change")) {
-    return "Готово, применила изменение. Если передумаешь, можно откатить.";
+    return "Готово, применил изменение. Если передумаешь, можно откатить.";
   }
 
   if (label.includes("preview") || label.includes("drafted")) {
-    return "Я подготовила черновик или правку. Проверь, и можешь сказать: принять, изменить или отклонить.";
+    return "Я подготовил черновик или правку. Проверь, и можешь сказать: принять, изменить или отклонить.";
   }
 
   return "Готово. Что дальше?";

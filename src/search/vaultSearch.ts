@@ -1,4 +1,4 @@
-import type { App, TFile } from "obsidian";
+import { normalizePath, type App, type TFile } from "obsidian";
 import type { VaultSearchResult } from "../types";
 
 const MAX_SEARCH_RESULTS = 6;
@@ -70,7 +70,7 @@ async function getSearchableIndexedMarkdownFiles(
   const scoredResults = await Promise.all(
     app.vault
       .getMarkdownFiles()
-      .filter((file) => !isIgnoredPath(file.path))
+      .filter((file) => !isIgnoredPath(file.path, app.vault.configDir))
       .map((file) => getIndexedMarkdownFile(app, file))
   );
 
@@ -330,13 +330,18 @@ function isFuzzyMatch(value: string, term: string): boolean {
   return true;
 }
 
-function isIgnoredPath(path: string): boolean {
-  const lowerPath = path.toLowerCase();
+function isIgnoredPath(path: string, configDir: string): boolean {
+  const lowerPath = normalizePath(path).toLowerCase();
+  const lowerConfigDir = normalizePath(configDir).toLowerCase();
   return (
-    lowerPath.startsWith(".obsidian/") ||
+    isPathOrChild(lowerPath, lowerConfigDir) ||
     lowerPath.startsWith(".git/") ||
     lowerPath.startsWith(".contex-history/")
   );
+}
+
+function isPathOrChild(path: string, parentPath: string): boolean {
+  return path === parentPath || path.startsWith(`${parentPath}/`);
 }
 
 function escapeRegExp(value: string): string {

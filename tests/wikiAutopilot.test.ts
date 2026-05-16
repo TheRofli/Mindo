@@ -49,6 +49,7 @@ const createDecision = decideWikiAutopilot({
 
 assert.equal(createDecision.kind, "propose_create");
 assert.equal(createDecision.shouldWriteWiki, true);
+assert.equal(createDecision.targetNodeType, "model");
 assert.equal(createDecision.sources.length, 2);
 assert.ok(createDecision.reason.includes("durable"));
 
@@ -73,6 +74,28 @@ const mergeDecision = decideWikiAutopilot({
 assert.equal(mergeDecision.kind, "merge_existing");
 assert.equal(mergeDecision.targetNodeId, voiceFlowNode.id);
 assert.equal(mergeDecision.targetPath, voiceFlowNode.path);
+assert.equal(mergeDecision.targetNodeType, "workflow");
+
+const projectDecision = decideWikiAutopilot({
+  userText: "Создай roadmap и план MVP для проекта LiveCollab.",
+  receipts: [researchReceipt],
+  sourcePaths: ["Test/LiveCollab.md"],
+  existingNodes: [],
+  now
+});
+
+assert.equal(projectDecision.kind, "propose_create");
+assert.equal(projectDecision.targetNodeType, "project");
+
+const problemDecision = decideWikiAutopilot({
+  userText: "В live dialogue проблема: barge-in не работает и ассистента нельзя перебить.",
+  assistantText: "Нужно исправить always-listening stream и VAD.",
+  existingNodes: [],
+  now
+});
+
+assert.equal(problemDecision.kind, "propose_create");
+assert.equal(problemDecision.targetNodeType, "problem");
 
 const ignored = decideWikiAutopilot({
   userText: "Thanks, sounds good.",
@@ -84,6 +107,21 @@ const ignored = decideWikiAutopilot({
 assert.equal(ignored.kind, "ignore");
 assert.equal(ignored.shouldWriteWiki, false);
 assert.equal(buildWikiAutopilotAction(ignored, { userText: "Thanks" }), null);
+
+const durableDiscussion = decideWikiAutopilot({
+  userText:
+    "Давай продумаем проект LiveCollab: нужен workflow, milestones, архитектура, риски, интеграция с Obsidian и план реализации для IDE.",
+  assistantText:
+    "Проект LiveCollab стоит разделить на design spec, code plan, realtime collaboration core, CRDT sync, inline comments, suggest-edit mode, voice notes and rollback. MVP should start with local-first document state, then add share sessions, conflict handling and a compact progress block in the Obsidian note.",
+  receipts: [],
+  sourcePaths: [],
+  existingNodes: [],
+  now
+});
+
+assert.equal(durableDiscussion.kind, "propose_create");
+assert.equal(durableDiscussion.shouldWriteWiki, true);
+assert.equal(durableDiscussion.targetNodeType, "project");
 
 const card = formatWikiAutopilotDecision(mergeDecision);
 

@@ -79,7 +79,7 @@ export function transitionTask(
   }
 
   if (!touched) {
-    throw new Error(`Contex Code task not found: ${taskId}`);
+    throw new Error(`Mindo Code task not found: ${taskId}`);
   }
 
   next.updatedAt = now;
