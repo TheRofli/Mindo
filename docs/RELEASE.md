@@ -48,20 +48,28 @@ The package manifest with hashes is:
 
 ## 4. Obsidian Manual Release Files
 
-Required:
+### Community Plugin Install
+
+Required for the public Community Plugin install:
 
 - `manifest.json`
 - `main.js`
 - `styles.css`
-- `assets/fonts/comfortaa/Comfortaa-Regular.ttf`
-- `assets/fonts/comfortaa/OFL.txt`
-- `assets/fonts/comfortaa/SOURCE.md`
 
-Recommended for full local-first features:
+Runtime logo and font assets are embedded in `main.js`, so the Community
+install must not depend on extra asset files.
 
-- `bin/contex-core.exe` or platform-specific `contex-core`
+### Full Local Runtime Install
+
+Recommended for full local-first features when available:
+
 - `tools/stt_server`
 - `tools/tts_server`
+- optional `bin/contex-core.exe` on Windows, or platform-specific `bin/contex-core`
+
+The `contex-core` sidecar is generated locally by the Rust build/install flow.
+It may be copied into release packages when present, but it is not tracked in
+Git.
 
 ## 5. Version Bump
 

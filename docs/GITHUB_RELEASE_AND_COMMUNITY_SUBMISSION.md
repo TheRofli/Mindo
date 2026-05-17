@@ -26,7 +26,7 @@ Before pushing to GitHub:
 - `README.md`, `CHANGELOG.md`, `LICENSE`, and `versions.json` are present.
 - `data.json` is not committed.
 - `.mindo-*`, legacy `.contex-*`, `.venv-*`, `.python-stt`, `.cache`, `node_modules`, Rust
-  `target`, downloaded model files, and release zips are not committed.
+  `target`, downloaded model files, generated `bin/contex-core.exe`, and release zips are not committed.
 - `manifest.json`, `package.json`, and `versions.json` versions match.
 - `manifest.json` has `"isDesktopOnly": true`.
 
@@ -70,6 +70,11 @@ The `Release` workflow creates a GitHub release with:
 Open the release and manually inspect the assets before submitting to the
 community plugin catalog.
 
+The Community Plugin install path is only `manifest.json`, `main.js`, and
+`styles.css`. The release zip can additionally include the full local runtime
+helpers when they are present: `tools/stt_server`, `tools/tts_server`, and an
+optional generated `bin/contex-core.exe` or platform-specific `bin/contex-core`.
+
 ## Obsidian Community Plugin Submission
 
 After the GitHub repo and first release are ready:
@@ -98,15 +103,17 @@ The plugin id must match `manifest.json`.
 
 Until the community review is accepted, users can install manually:
 
-1. Download the release zip.
-2. Extract it to:
+1. For the Community Plugin install, download `manifest.json`, `main.js`, and
+   `styles.css`.
+2. For the full local runtime install, download the release zip instead.
+3. Extract the selected files to:
 
    ```text
    Vault/.obsidian/plugins/mindo
    ```
 
-3. Restart Obsidian.
-4. Enable `Mindo` under Community plugins.
+4. Restart Obsidian.
+5. Enable `Mindo` under Community plugins.
 
 ## BRAT / Beta Path
 
