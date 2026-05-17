@@ -21,7 +21,6 @@ const requiredFiles = [
   "manifest.json",
   "main.js",
   "styles.css",
-  "assets/logo.png",
   "assets/fonts/comfortaa/Comfortaa-Regular.ttf",
   "assets/fonts/comfortaa/OFL.txt",
   "assets/fonts/comfortaa/SOURCE.md"

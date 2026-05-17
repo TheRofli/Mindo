@@ -52,7 +52,9 @@ for (const label of removedFontLabels) {
 
 const sidebarView = readFileSync(sidebarViewPath, "utf8");
 assert.ok(sidebarView.includes('"Mindo Runtime Comfortaa"'));
-assert.ok(sidebarView.includes('"assets/logo.png"'));
+assert.ok(sidebarView.includes("MINDO_LOGO_DATA_URL"));
+assert.ok(sidebarView.includes("data:image/svg+xml"));
+assert.ok(sidebarView.includes('fileName === "assets/logo.png"'));
 assert.ok(
   /this\.getPluginAssetResourcePath\(\s*"assets\/fonts\/comfortaa\/Comfortaa-Regular\.ttf"\s*\)/s.test(
     sidebarView
@@ -62,7 +64,7 @@ assert.ok(/root\.style\.setProperty\(\s*"--mindo-font-family"/s.test(sidebarView
 assert.ok(sidebarView.includes("JSON.stringify(fontResourcePath)"));
 
 const packageScript = readFileSync(packageScriptPath, "utf8");
-assert.ok(packageScript.includes("assets/logo.png"));
+assert.ok(!packageScript.includes("assets/logo.png"));
 assert.ok(packageScript.includes("assets/fonts/comfortaa/Comfortaa-Regular.ttf"));
 assert.ok(!packageScript.includes('"logo.png"'));
 assert.ok(!packageScript.includes("contex_black.png"));

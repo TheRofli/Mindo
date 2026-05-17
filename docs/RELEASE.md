@@ -53,7 +53,6 @@ Required:
 - `manifest.json`
 - `main.js`
 - `styles.css`
-- `assets/logo.png`
 - `assets/fonts/comfortaa/Comfortaa-Regular.ttf`
 - `assets/fonts/comfortaa/OFL.txt`
 - `assets/fonts/comfortaa/SOURCE.md`
@@ -81,7 +80,7 @@ Attach the contents of `dist/mindo` or a zip created from that folder.
 Do not attach local `data.json`.
 
 The recommended release path is to push a tag that exactly matches
-`manifest.json` -> `version`, for example `0.2.1`, and let
+`manifest.json` -> `version`, for example `0.2.2`, and let
 `.github/workflows/release.yml` create the GitHub release.
 
 For Obsidian Community Plugin submission, do not use only a `vX.Y.Z` release:

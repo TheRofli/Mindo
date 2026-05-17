@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- Embedded the Mindo whale logo in the plugin bundle so Community Plugin installs do not show broken image placeholders when optional asset files are absent.
+- Removed `assets/logo.png` from the required release file list because the runtime UI no longer depends on that external PNG.
+
 ## 0.2.1
 
 - Switched to the recognized MIT license.
