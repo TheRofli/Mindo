@@ -40,6 +40,8 @@ tools/**/__pycache__/
 
 # Rust build output.
 tools/contex_core/target/
+bin/contex-core.exe
+bin/contex-core
 
 # Local editor / OS noise.
 .DS_Store
