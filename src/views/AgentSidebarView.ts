@@ -195,6 +195,7 @@ import { ChatController } from "./controllers/ChatController";
 import { DiffController } from "./controllers/DiffController";
 import { LiveDialogueController } from "./controllers/LiveDialogueController";
 import { ModelProfileController } from "./controllers/ModelProfileController";
+import { OpenFileCommandController } from "./controllers/OpenFileCommandController";
 import { VoiceController } from "./controllers/VoiceController";
 import {
   rankOpenFilePathCandidates,
@@ -8002,60 +8003,35 @@ export class ContexAgentView extends ItemView {
     query: string,
     commandText: string
   ): Promise<string | null> {
-    this.pushActionTimeline("opening", "Opening note", query);
-    let results: VaultSearchResult[] = [];
-    const directFile = this.resolveOpenFileCandidate(query);
-
-    if (directFile) {
-      results = [
-        {
-          path: directFile.path,
-          title: directFile.basename,
-          score: 999,
-          snippet: "Matched by file name and folder.",
-          matches: ["filename", "path"]
-        }
-      ];
-    }
-
-    if (!results.length) {
-      const rustResolved = await resolvePathsWithRustCore({
-        query,
-        paths: this.app.vault.getMarkdownFiles().map((file) => file.path),
-        limit: 3,
-        pluginDir: __dirname
-      });
-      results = rustResolved?.length
-        ? rustResolved.map((result) => ({
-            path: result.path,
-            title: result.path.split("/").pop()?.replace(/\.md$/i, "") ?? result.path,
-            score: result.score,
-            snippet: "Matched by Rust path resolver.",
-            matches: ["rust-core", "path"]
-          }))
-        : [];
-    }
-
-    if (!results.length) {
-      this.setError(`Could not find a Markdown note for: ${query}`);
-      this.statusEl?.setText("Status: Open failed");
-      this.pushActionTimeline("failed", "Open failed", query);
-      return null;
-    }
-
-    this.rememberVaultSearch(query, results);
-    await this.openVaultPath(results[0].path, `Opened file: ${results[0].path}`);
-    this.appendActionReceipt(
-      {
-        status: "opened",
-        label: "Opened note",
-        detail: `File: ${results[0].path} | folder: ${getFolderPath(results[0].path) || "/"} | query: ${query}`,
-        path: results[0].path
+    const controller = new OpenFileCommandController({
+      getMarkdownPaths: () =>
+        this.app.vault.getMarkdownFiles().map((file) => file.path),
+      resolveDirectCandidate: (candidateQuery) => {
+        const candidate = this.resolveOpenFileCandidate(candidateQuery);
+        return candidate
+          ? {
+              path: candidate.path,
+              basename: candidate.basename
+            }
+          : null;
       },
-      commandText
-    );
-    this.pushActionTimeline("done", "Opened note", results[0].path, results[0].path);
-    return results[0].path;
+      resolvePathsWithRustCore,
+      pluginDir: __dirname,
+      searchSemanticVaultMarkdown: (semanticQuery, variants, limit) =>
+        searchSemanticVaultMarkdown(this.app, semanticQuery, variants, limit),
+      openVaultPath: (path, noticeMessage) =>
+        this.openVaultPath(path, noticeMessage),
+      rememberVaultSearch: (vaultQuery, results) =>
+        this.rememberVaultSearch(vaultQuery, results),
+      appendActionReceipt: (receipt, userContent) =>
+        this.appendActionReceipt(receipt, userContent),
+      pushActionTimeline: (type, label, detail, path) =>
+        this.pushActionTimeline(type, label, detail, path),
+      setError: (error) => this.setError(error),
+      setStatus: (status) => this.statusEl?.setText(status)
+    });
+
+    return controller.openFileByVaultQuery(query, commandText);
   }
 
   private resolveOpenFileCandidate(query: string): TFile | null {

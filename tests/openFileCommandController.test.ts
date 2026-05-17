@@ -61,11 +61,16 @@ function createDeps(
 }
 
 async function testDirectCandidateWins(): Promise<void> {
+  let rustResolverCalls = 0;
   const { controller, opened, receipts, timeline } = createDeps({
     resolveDirectCandidate: () => ({
       path: "Test/Test.md",
       basename: "Test"
-    })
+    }),
+    resolvePathsWithRustCore: async () => {
+      rustResolverCalls += 1;
+      throw new Error("Rust fallback should not run for direct candidates");
+    }
   });
 
   const result = await controller.openFileByVaultQuery(
@@ -79,6 +84,7 @@ async function testDirectCandidateWins(): Promise<void> {
   assert.equal(receipts[0].path, "Test/Test.md");
   assert.match(receipts[0].detail ?? "", /folder: Test/);
   assert.equal(timeline.at(-1)?.type, "done");
+  assert.equal(rustResolverCalls, 0);
 }
 
 async function testRustFallback(): Promise<void> {

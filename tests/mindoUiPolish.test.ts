@@ -57,8 +57,14 @@ assert.ok(
 assert.ok(!styles.includes("!important"), "Expected Mindo styles to avoid !important overrides.");
 assert.ok(!styles.includes("text-decoration"), "Expected Mindo styles to avoid partially supported text-decoration.");
 assert.ok(
-  isDirectOpenCandidateCheckedBeforeRust(sidebarView),
-  "Expected open-file routing to prefer exact vault filename/folder matches before Rust fallback."
+  sidebarView.includes(
+    'import { OpenFileCommandController } from "./controllers/OpenFileCommandController";'
+  ),
+  "Expected AgentSidebarView to import the open-file command controller."
+);
+assert.ok(
+  isOpenFileRoutingDelegated(sidebarView),
+  "Expected AgentSidebarView.openFileByVaultQuery to delegate open-file routing to OpenFileCommandController."
 );
 
 console.log("mindoUiPolish tests passed");
@@ -127,7 +133,7 @@ function formatFailure(file: string, index: number, line: string): string {
   return `${file}:${index + 1}: ${line.trim()}`;
 }
 
-function isDirectOpenCandidateCheckedBeforeRust(source: string): boolean {
+function isOpenFileRoutingDelegated(source: string): boolean {
   const method = source.match(
     /private async openFileByVaultQuery[\s\S]*?private resolveOpenFileCandidate/u
   )?.[0];
@@ -136,8 +142,11 @@ function isDirectOpenCandidateCheckedBeforeRust(source: string): boolean {
     return false;
   }
 
-  const directIndex = method.indexOf("const directFile = this.resolveOpenFileCandidate(query)");
-  const rustIndex = method.indexOf("resolvePathsWithRustCore");
-
-  return directIndex >= 0 && rustIndex >= 0 && directIndex < rustIndex;
+  return (
+    method.includes("new OpenFileCommandController") &&
+    method.includes("resolveDirectCandidate") &&
+    method.includes("this.resolveOpenFileCandidate(candidateQuery)") &&
+    method.includes("resolvePathsWithRustCore") &&
+    method.includes("return controller.openFileByVaultQuery(query, commandText)")
+  );
 }
