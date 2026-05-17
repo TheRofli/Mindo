@@ -552,8 +552,8 @@ export class ContexAgentView extends ItemView {
     const activeProfile = this.modelProfileController.getActive(this.plugin.settings);
     this.modelEl.setText(this.getCompactModelProfileLabel(activeProfile));
     this.modelButtonEl?.setAttribute(
-      "title",
-      `${activeProfile.name} | ${activeProfile.model}`
+      "aria-label",
+      `Model profile: ${activeProfile.name}, model ${activeProfile.model}`
     );
     this.refreshModelMenu();
     this.refreshAutoApplyToggle();
@@ -1884,18 +1884,6 @@ export class ContexAgentView extends ItemView {
     this.contextMeterEl.toggleClass("is-warn", usage.percent >= 70);
     this.contextMeterEl.toggleClass("is-high", usage.percent >= 88);
     this.contextMeterEl.setAttribute(
-      "title",
-      [
-        `Approx. context: ${usage.percent}%`,
-        `~${usage.tokens.toLocaleString()} / ${CONTEXT_METER_TOKEN_BUDGET.toLocaleString()} tokens`,
-        `Chat ${usage.chatTokens.toLocaleString()}`,
-        `Input ${estimateTokensFromChars(this.inputEl?.value.length ?? 0).toLocaleString()}`,
-        `Note ${usage.noteTokens.toLocaleString()}`,
-        `Attached ${usage.attachedTokens.toLocaleString()}`,
-        `Reserved ${CONTEXT_METER_RESERVED_TOKENS.toLocaleString()}`
-      ].join(" | ")
-    );
-    this.contextMeterEl.setAttribute(
       "aria-label",
       `Approximate context usage ${usage.percent}%`
     );
@@ -1984,7 +1972,7 @@ export class ContexAgentView extends ItemView {
     this.autoApplyToggleEl.toggleClass("is-active", enabled);
     this.autoApplyToggleEl.setAttribute("aria-checked", String(enabled));
     this.autoApplyToggleEl.setAttribute(
-      "title",
+      "aria-label",
       enabled
         ? "Auto mode is on: edit previews apply immediately."
         : "Manual mode: edit previews wait for approval."
