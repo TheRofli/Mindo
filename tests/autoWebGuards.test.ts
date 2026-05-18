@@ -29,6 +29,20 @@ assert.equal(isVaultLocalDescriptionRequest("Explain the opened note."), true);
 assert.equal(isVaultLocalDescriptionRequest("Describe the open note."), true);
 
 assert.equal(
+  isVaultLocalDescriptionRequest("Summarize this note about latest LLM tools"),
+  true
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Describe the open note about Web Components"),
+  true
+);
+
+assert.equal(isVaultLocalDescriptionRequest("Explain this file path"), true);
+
+assert.equal(isVaultLocalDescriptionRequest("Find current LLM notes in my vault."), true);
+
+assert.equal(
   isVaultLocalDescriptionRequest("Find qore systems strategy in my vault"),
   true
 );

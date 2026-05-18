@@ -19,15 +19,18 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "в хранилище",
     "из хранилища",
     "current note",
+    "this note",
     "open note",
     "opened note",
+    "this file",
+    "file path",
     "open file",
     "opened file",
     "active note",
     "my vault",
     "in my vault",
     "from my vault"
-  ]);
+  ]) || includesAnyWord(normalized, ["note", "notes", "path"]);
   const descriptionIntent = includesAny(normalized, [
     "опиши",
     "описать",
@@ -62,7 +65,6 @@ export function hasExplicitWebIntent(userRequest: string): boolean {
     "поищи в интернете",
     "загугли",
     "гугл",
-    "web",
     "internet",
     "online",
     "search the web",
@@ -76,4 +78,8 @@ export function normalizeRequestText(value: string): string {
 
 function includesAny(text: string, needles: string[]): boolean {
   return needles.some((needle) => text.includes(needle));
+}
+
+function includesAnyWord(text: string, words: string[]): boolean {
+  return words.some((word) => new RegExp(`\\b${word}\\b`, "u").test(text));
 }

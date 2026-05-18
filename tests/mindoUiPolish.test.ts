@@ -70,6 +70,10 @@ assert.ok(
   isOpenFileCandidateDecisionBased(sidebarView),
   "Expected AgentSidebarView.resolveOpenFileCandidate to return files only for direct resolver decisions."
 );
+assert.ok(
+  isAutoWebContextGuardedBeforePlannerFallback(sidebarView),
+  "Expected AgentSidebarView.buildAutoWebContextForRequest to skip vault-local prompts before planner fallback."
+);
 
 console.log("mindoUiPolish tests passed");
 
@@ -171,5 +175,25 @@ function isOpenFileCandidateDecisionBased(source: string): boolean {
     method.includes("currentPath: this.voiceSessionMemory.lastOpenedFile") &&
     method.includes('if (decision.kind !== "direct")') &&
     method.includes("decision.candidate.path")
+  );
+}
+
+function isAutoWebContextGuardedBeforePlannerFallback(source: string): boolean {
+  const method = source.match(
+    /private async buildAutoWebContextForRequest[\s\S]*?private async attachProjectMemoryContext/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  const localOnlyIndex = method.indexOf("isLocalOnlyCommandText(userRequest)");
+  const vaultLocalIndex = method.indexOf("isVaultLocalDescriptionRequest(userRequest)");
+  const plannerIndex = method.indexOf("planContextWorkflow(userRequest)");
+
+  return (
+    localOnlyIndex >= 0 &&
+    vaultLocalIndex > localOnlyIndex &&
+    plannerIndex > vaultLocalIndex
   );
 }

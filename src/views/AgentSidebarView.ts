@@ -2701,6 +2701,10 @@ export class ContexAgentView extends ItemView {
       return null;
     }
 
+    if (isVaultLocalDescriptionRequest(userRequest)) {
+      return null;
+    }
+
     const workflowPlan = planContextWorkflow(userRequest);
     const decision =
       decideAutoWebResearch(userRequest, context) ??
