@@ -17,6 +17,7 @@ import {
   installRuntimeComfortaaFont
 } from "./sidebarAssetResources";
 import { renderHomeHero } from "./homeHeroRenderer";
+import { getSuggestionCards } from "./suggestionCardsRenderer";
 import { getSelectedTextContext } from "../context/selectedTextContext";
 import {
   requestLlmChatCompletion,
@@ -127,6 +128,7 @@ import {
 import {
   getUiLanguageFromObsidianApp,
   getUiText,
+  type UiLanguage,
   type UiTextKey
 } from "../i18n";
 import {
@@ -427,7 +429,7 @@ export class ContexAgentView extends ItemView {
     return "message-square";
   }
 
-  private getUiLanguage(): string {
+  private getUiLanguage(): UiLanguage {
     return getUiLanguageFromObsidianApp(this.app);
   }
 
@@ -1838,11 +1840,53 @@ export class ContexAgentView extends ItemView {
       return;
     }
 
+    this.noteActionButtons = this.noteActionButtons.filter(
+      (button) =>
+        button.isConnected &&
+        !button.classList.contains("contex-agent__suggestion-card")
+    );
+
     renderHomeHero({
       parentEl: this.suggestionsEl,
       greeting: this.t("homeGreeting"),
       createLogo: (parentEl, className) =>
         this.createMindoLogoImage(parentEl, className)
+    });
+
+    this.suggestionsEl.createDiv({
+      cls: "contex-agent__suggestions-title",
+      text: this.t("suggestedPrompts")
+    });
+    const cardsEl = this.suggestionsEl.createDiv({
+      cls: "contex-agent__suggestion-cards"
+    });
+
+    getSuggestionCards(this.getUiLanguage()).forEach((card) => {
+      const cardEl = cardsEl.createEl("button", {
+        cls: "contex-agent__suggestion-card",
+        attr: {
+          type: "button"
+        }
+      });
+      const textEl = cardEl.createDiv({
+        cls: "contex-agent__suggestion-card-text"
+      });
+      textEl.createDiv({
+        cls: "contex-agent__suggestion-card-title",
+        text: card.label
+      });
+      textEl.createDiv({
+        cls: "contex-agent__suggestion-card-desc",
+        text: card.description
+      });
+      const iconEl = cardEl.createSpan({
+        cls: "contex-agent__suggestion-card-icon"
+      });
+      setIcon(iconEl, "plus-circle");
+      cardEl.addEventListener("click", () => {
+        void this.runNoteAction(card.action);
+      });
+      this.noteActionButtons.push(cardEl);
     });
   }
 
@@ -1996,7 +2040,7 @@ export class ContexAgentView extends ItemView {
     }
 
     if (action.kind === "update-current-note") {
-      await this.updateCurrentNote();
+      await this.updateCurrentNote(action.prompt);
       return;
     }
 

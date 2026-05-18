@@ -86,6 +86,14 @@ assert.ok(
   isResearchWorkflowWebKeywordConservative(sidebarView),
   "Expected shouldUseWebForResearchWorkflow to avoid bare topical 'web'."
 );
+assert.ok(
+  isStarterPromptEmptyStateWired(sidebarView),
+  "Expected AgentSidebarView.renderSuggestions to render first-value starter prompt cards in the empty state."
+);
+assert.ok(
+  isUpdateCurrentNoteActionPromptForwarded(sidebarView),
+  "Expected AgentSidebarView.runNoteAction to pass update-current-note action prompts into updateCurrentNote."
+);
 
 console.log("mindoUiPolish tests passed");
 
@@ -257,5 +265,51 @@ function isResearchWorkflowWebKeywordConservative(source: string): boolean {
   return (
     method.includes("hasExplicitWebIntent(commandText)") &&
     !method.includes('"web"')
+  );
+}
+
+function isStarterPromptEmptyStateWired(source: string): boolean {
+  const method = source.match(
+    /private renderSuggestions\(\): void[\s\S]*?private refreshConversationChrome/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  const hiddenIndex = method.indexOf("contex-agent__suggestions--hidden");
+  const messageReturnIndex = method.indexOf("if (this.messages.length > 0)");
+  const heroIndex = method.indexOf("renderHomeHero");
+  const cardsIndex = method.indexOf("getSuggestionCards(this.getUiLanguage())");
+
+  return (
+    source.includes(
+      'import { getSuggestionCards } from "./suggestionCardsRenderer";'
+    ) &&
+    hiddenIndex >= 0 &&
+    messageReturnIndex > hiddenIndex &&
+    heroIndex > messageReturnIndex &&
+    cardsIndex > heroIndex &&
+    method.includes('cls: "contex-agent__suggestion-cards"') &&
+    method.includes('cls: "contex-agent__suggestion-card"') &&
+    method.includes("void this.runNoteAction(card.action)")
+  );
+}
+
+function isUpdateCurrentNoteActionPromptForwarded(source: string): boolean {
+  const method = source.match(
+    /private async runNoteAction\(action: NoteAction\): Promise<void>[\s\S]*?private renderModelMenu/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return (
+    source.includes(
+      'async updateCurrentNote(userPrompt = "Update the current note safely."): Promise<void>'
+    ) &&
+    method.includes('if (action.kind === "update-current-note")') &&
+    method.includes("await this.updateCurrentNote(action.prompt);")
   );
 }
