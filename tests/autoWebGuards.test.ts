@@ -26,6 +26,31 @@ assert.equal(isVaultLocalDescriptionRequest("What's in the current note?"), true
 assert.equal(isVaultLocalDescriptionRequest("Tell me about the current note"), true);
 
 assert.equal(
+  isVaultLocalDescriptionRequest("What is in the current note about internet architecture?"),
+  true
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Summarize this note about online learning"),
+  true
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("What is in the current note? Search the internet too."),
+  false
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Summarize this note using online sources."),
+  false
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Describe this file with internet research."),
+  false
+);
+
+assert.equal(
   isVaultLocalDescriptionRequest("Explain the opened file and use my vault notes."),
   true
 );

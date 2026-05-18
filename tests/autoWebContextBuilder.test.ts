@@ -129,6 +129,61 @@ function baseOptions(overrides: Record<string, unknown> = {}) {
 }
 
 {
+  let searched = false;
+
+  const context = await buildAutoWebContext(
+    baseOptions({
+      userRequest: "What is in the current note about internet architecture?",
+      isLocalOnlyCommandText: () => false,
+      decideAutoWebResearch: () => ({
+        query: "internet architecture",
+        reason: "web requested"
+      }),
+      planContextWorkflow: () => ({
+        requiresWeb: true,
+        reason: "time-sensitive request"
+      }),
+      searchWeb: async () => {
+        searched = true;
+        return {
+          provider: "duckduckgo",
+          results: [webResult]
+        };
+      }
+    })
+  );
+
+  assert.equal(context, null);
+  assert.equal(searched, false);
+}
+
+{
+  let searched = false;
+
+  const context = await buildAutoWebContext(
+    baseOptions({
+      userRequest: "What is in the current note? Search the internet too.",
+      isLocalOnlyCommandText: () => false,
+      decideAutoWebResearch: () => ({
+        query: "current note internet",
+        reason: "web requested"
+      }),
+      searchWeb: async (_settings: unknown, query: string) => {
+        searched = true;
+        return {
+          provider: "duckduckgo",
+          fallbackReason: query.includes("May") ? "direct" : undefined,
+          results: [webResult]
+        };
+      }
+    })
+  );
+
+  assert.equal(searched, true);
+  assert.equal(context?.provider, "duckduckgo");
+}
+
+{
   const statuses: string[] = [];
   const timeline: string[] = [];
 
