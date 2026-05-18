@@ -72,6 +72,7 @@ export function hasExplicitWebIntent(userRequest: string): boolean {
     "internet",
     "online",
     "search the web",
+    "web search",
     "web research",
     "web sources",
     "web source",
