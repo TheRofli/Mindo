@@ -32,10 +32,17 @@ export function getSuggestionCards(
   return NOTE_ACTIONS.map((action) => {
     const id = getNoteActionId(action);
     const localizedAction = getActionText(uiLanguage, id);
+    const cardAction = localizedAction.prompt
+      ? {
+          ...action,
+          label: localizedAction.label,
+          prompt: localizedAction.prompt
+        }
+      : action;
 
     return {
       id,
-      action,
+      action: cardAction,
       label: localizedAction.label,
       description: localizedAction.description
     };

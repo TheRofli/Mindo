@@ -42,6 +42,7 @@ export interface LocalizedActionText {
   label: string;
   description: string;
   title?: string;
+  prompt?: string;
 }
 
 const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
@@ -127,6 +128,21 @@ const UI_TEXT: Record<UiLanguage, Record<UiTextKey, string>> = {
 
 const ACTION_TEXT: Record<UiLanguage, Record<string, LocalizedActionText>> = {
   en: {
+    "vault-recall": {
+      label: "Ask your vault",
+      description: "Find what your notes already say about the current idea.",
+      title: "Vault Recall"
+    },
+    "connect-note": {
+      label: "Connect this note",
+      description: "Find related notes and explain the strongest links.",
+      title: "Note Connections"
+    },
+    "improve-draft": {
+      label: "Improve this draft",
+      description: "Draft a clearer version through preview/diff.",
+      title: "Draft Preview"
+    },
     "remember-note": {
       label: "Remember note",
       description: "Save the active note as durable project memory.",
@@ -159,6 +175,23 @@ const ACTION_TEXT: Record<UiLanguage, Record<string, LocalizedActionText>> = {
     }
   },
   ru: {
+    "vault-recall": {
+      label: "Спросить vault",
+      description: "Найти, что заметки уже говорят о текущей идее.",
+      title: "Vault recall"
+    },
+    "connect-note": {
+      label: "Связать заметку",
+      description: "Найти заметки, которые связаны с текущей.",
+      title: "Связи заметки"
+    },
+    "improve-draft": {
+      label: "Улучшить черновик",
+      description: "Подготовить более ясную версию через preview/diff.",
+      title: "Preview черновика",
+      prompt:
+        "Сделай этот черновик яснее. Сначала покажи preview/diff, не меняй заметку молча."
+    },
     "remember-note": {
       label: "Запомнить заметку",
       description: "Сохранить активную заметку как долговременную память проекта.",

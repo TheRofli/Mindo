@@ -31,4 +31,36 @@ assert.equal(
 assert.equal(getActionText("ru", "summarize-note").label, "Кратко пересказать");
 assert.equal(getActionText("en", "summarize-note").label, "Summarize note");
 
+assert.deepEqual(getActionText("en", "vault-recall"), {
+  label: "Ask your vault",
+  description: "Find what your notes already say about the current idea.",
+  title: "Vault Recall"
+});
+assert.deepEqual(getActionText("en", "connect-note"), {
+  label: "Connect this note",
+  description: "Find related notes and explain the strongest links.",
+  title: "Note Connections"
+});
+assert.deepEqual(getActionText("en", "improve-draft"), {
+  label: "Improve this draft",
+  description: "Draft a clearer version through preview/diff.",
+  title: "Draft Preview"
+});
+assert.deepEqual(getActionText("ru", "vault-recall"), {
+  label: "Спросить vault",
+  description: "Найти, что заметки уже говорят о текущей идее.",
+  title: "Vault recall"
+});
+assert.deepEqual(getActionText("ru", "connect-note"), {
+  label: "Связать заметку",
+  description: "Найти заметки, которые связаны с текущей.",
+  title: "Связи заметки"
+});
+assert.equal(getActionText("ru", "improve-draft").label, "Улучшить черновик");
+assert.equal(
+  getActionText("ru", "improve-draft").description,
+  "Подготовить более ясную версию через preview/diff."
+);
+assert.equal(getActionText("ru", "improve-draft").title, "Preview черновика");
+
 console.log("uiLocalization tests passed");

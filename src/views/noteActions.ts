@@ -15,28 +15,23 @@ export interface NoteAction {
 
 export const NOTE_ACTIONS: NoteAction[] = [
   {
-    id: "explain-note",
-    label: "Explain note",
+    id: "vault-recall",
+    label: "Ask your vault",
     prompt:
-      "Explain the current note in plain language. Highlight the important concepts, why they matter, and anything that seems unclear."
+      "What have I already written about this? Answer from my vault and cite the notes you used."
   },
   {
-    id: "summarize-note",
-    label: "Summarize note",
+    id: "connect-note",
+    label: "Connect this note",
     prompt:
-      "Summarize the current note in concise bullets. Include the main idea, key points, and any open questions."
+      "Connect this note to related notes in my vault. Explain the strongest links and cite the notes."
   },
   {
-    id: "create-roadmap",
-    label: "Create roadmap",
-    kind: "create-roadmap",
-    prompt: ""
-  },
-  {
-    id: "extract-tasks",
-    label: "Extract tasks",
+    id: "improve-draft",
+    label: "Improve this draft",
+    kind: "update-current-note",
     prompt:
-      "Extract actionable tasks from the current note. Use Markdown checkboxes. Include owners or dates only if they are explicitly present, and do not invent missing details."
+      "Make this draft clearer. Show a preview/diff first and do not silently change the note."
   }
 ];
 
@@ -71,6 +66,20 @@ export const SELECTED_TEXT_ACTIONS: NoteAction[] = [
 ];
 
 export function getActionDescription(action: NoteAction): string {
+  const actionId = getNoteActionId(action);
+
+  if (actionId === "vault-recall") {
+    return "Find what your notes already say about the current idea.";
+  }
+
+  if (actionId === "connect-note") {
+    return "Find related notes and explain the strongest links.";
+  }
+
+  if (actionId === "improve-draft") {
+    return "Draft a clearer version through preview/diff.";
+  }
+
   if (action.kind === "remember-note") {
     return "Save the active note as durable project memory.";
   }
@@ -111,6 +120,20 @@ export function getNoteActionId(action: NoteAction): string {
 }
 
 export function getSuggestionTitle(action: NoteAction): string {
+  const actionId = getNoteActionId(action);
+
+  if (actionId === "vault-recall") {
+    return "Vault Recall";
+  }
+
+  if (actionId === "connect-note") {
+    return "Note Connections";
+  }
+
+  if (actionId === "improve-draft") {
+    return "Draft Preview";
+  }
+
   if (action.kind === "remember-note" || action.kind === "update-current-note") {
     return "Active Note";
   }

@@ -9,24 +9,36 @@ import {
 
 assert.deepEqual(
   NOTE_ACTIONS.map((action) => action.id),
-  ["explain-note", "summarize-note", "create-roadmap", "extract-tasks"]
+  ["vault-recall", "connect-note", "improve-draft"]
 );
 
-const explainAction = NOTE_ACTIONS[0];
-assert.ok(explainAction);
-assert.equal(getNoteActionId(explainAction), "explain-note");
-assert.equal(getSuggestionTitle(explainAction), "Plain Explanation");
+const vaultRecallAction = NOTE_ACTIONS[0];
+assert.ok(vaultRecallAction);
+assert.equal(getNoteActionId(vaultRecallAction), "vault-recall");
+assert.equal(getSuggestionTitle(vaultRecallAction), "Vault Recall");
 assert.equal(
-  getActionDescription(explainAction),
-  "Explain the active note in plain language."
+  getActionDescription(vaultRecallAction),
+  "Find what your notes already say about the current idea."
 );
 
-const summarizeAction = NOTE_ACTIONS.find((action) => action.id === "summarize-note");
-assert.ok(summarizeAction);
-assert.equal(getSuggestionTitle(summarizeAction), "Note Summary");
+const connectNoteAction = NOTE_ACTIONS.find(
+  (action) => action.id === "connect-note"
+);
+assert.ok(connectNoteAction);
+assert.equal(getSuggestionTitle(connectNoteAction), "Note Connections");
 assert.equal(
-  getActionDescription(summarizeAction),
-  "Summarize the active note into concise bullets."
+  getActionDescription(connectNoteAction),
+  "Find related notes and explain the strongest links."
+);
+
+const improveDraftAction = NOTE_ACTIONS.find(
+  (action) => action.id === "improve-draft"
+);
+assert.ok(improveDraftAction);
+assert.equal(getSuggestionTitle(improveDraftAction), "Draft Preview");
+assert.equal(
+  getActionDescription(improveDraftAction),
+  "Draft a clearer version through preview/diff."
 );
 
 const improveAction = SELECTED_TEXT_ACTIONS.find(
