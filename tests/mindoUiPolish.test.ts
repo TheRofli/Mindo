@@ -66,6 +66,10 @@ assert.ok(
   isOpenFileRoutingDelegated(sidebarView),
   "Expected AgentSidebarView.openFileByVaultQuery to delegate open-file routing to OpenFileCommandController."
 );
+assert.ok(
+  isOpenFileCandidateDecisionBased(sidebarView),
+  "Expected AgentSidebarView.resolveOpenFileCandidate to return files only for direct resolver decisions."
+);
 
 console.log("mindoUiPolish tests passed");
 
@@ -148,5 +152,24 @@ function isOpenFileRoutingDelegated(source: string): boolean {
     method.includes("this.resolveOpenFileCandidate(candidateQuery)") &&
     method.includes("resolvePathsWithRustCore") &&
     method.includes("return controller.openFileByVaultQuery(query, commandText)")
+  );
+}
+
+function isOpenFileCandidateDecisionBased(source: string): boolean {
+  const method = source.match(
+    /private resolveOpenFileCandidate[\s\S]*?private async openVaultPath/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return (
+    source.includes("resolveOpenFileTarget") &&
+    !source.includes("rankOpenFilePathCandidates") &&
+    method.includes("const decision = resolveOpenFileTarget") &&
+    method.includes("currentPath: this.voiceSessionMemory.lastOpenedFile") &&
+    method.includes('if (decision.kind !== "direct")') &&
+    method.includes("decision.candidate.path")
   );
 }

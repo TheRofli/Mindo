@@ -75,5 +75,5 @@ export function resolveOpenFileTarget(
 }
 
 function normalizeVaultPath(path: string): string {
-  return path.replaceAll("\\", "/");
+  return path.replace(/\\/g, "/");
 }

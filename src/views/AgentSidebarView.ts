@@ -195,9 +195,7 @@ import { ModelProfileController } from "./controllers/ModelProfileController";
 import { OpenFileCommandController } from "./controllers/OpenFileCommandController";
 import { VoiceController } from "./controllers/VoiceController";
 import { SemanticLocalCommandClassifier } from "./controllers/SemanticLocalCommandClassifier";
-import {
-  rankOpenFilePathCandidates
-} from "../resolver/openFileResolver";
+import { resolveOpenFileTarget } from "../resolver/openFileResolution";
 import {
   ActionTimeline,
   type ActionTimelineEventType
@@ -7803,17 +7801,17 @@ export class ContexAgentView extends ItemView {
   }
 
   private resolveOpenFileCandidate(query: string): TFile | null {
-    const ranked = rankOpenFilePathCandidates(
-      this.app.vault.getMarkdownFiles().map((file) => file.path),
-      query
-    );
-    const topPath = ranked[0]?.path;
+    const decision = resolveOpenFileTarget({
+      paths: this.app.vault.getMarkdownFiles().map((file) => file.path),
+      query,
+      currentPath: this.voiceSessionMemory.lastOpenedFile
+    });
 
-    if (!topPath) {
+    if (decision.kind !== "direct") {
       return null;
     }
 
-    const file = this.app.vault.getAbstractFileByPath(topPath);
+    const file = this.app.vault.getAbstractFileByPath(decision.candidate.path);
     return file instanceof TFile ? file : null;
   }
 
