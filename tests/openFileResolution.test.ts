@@ -8,15 +8,17 @@ const paths = [
   "Archive/Core System Notes.md"
 ];
 
-const confident = resolveOpenFileTarget({
+const preservesRankedTopCandidate = resolveOpenFileTarget({
   paths,
   query: "core system strategy"
 });
 
-assert.equal(confident.kind, "direct");
+assert.equal(preservesRankedTopCandidate.kind, "direct");
 assert.equal(
-  confident.kind === "direct" ? confident.candidate.path : undefined,
-  "Proton/Qore Systems Strategy.md"
+  preservesRankedTopCandidate.kind === "direct"
+    ? preservesRankedTopCandidate.candidate.path
+    : undefined,
+  "Archive/Core System Notes.md"
 );
 
 const ambiguous = resolveOpenFileTarget({
@@ -51,6 +53,14 @@ const missing = resolveOpenFileTarget({
 
 assert.equal(missing.kind, "none");
 assert.match(missing.reason, /No Markdown note matched/);
+
+const belowThreshold = resolveOpenFileTarget({
+  paths,
+  query: "core system strategy",
+  minDirectScore: 500
+});
+
+assert.equal(belowThreshold.kind, "none");
 
 const currentOnly = resolveOpenFileTarget({
   paths: ["Current/Open.md"],

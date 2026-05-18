@@ -1,5 +1,4 @@
 import {
-  normalizeOpenFileValue,
   rankOpenFilePathCandidates,
   type OpenFilePathCandidate
 } from "./openFileResolver";
@@ -36,12 +35,7 @@ export function resolveOpenFileTarget(
     options.paths,
     options.query
   ).filter((candidate) => normalizeVaultPath(candidate.path) !== currentPath);
-  const finalTokenPreference = preferDistinctiveFinalTokenCandidate(
-    candidates,
-    options.query
-  );
-  const orderedCandidates = finalTokenPreference.candidates;
-  const topCandidate = orderedCandidates[0];
+  const topCandidate = candidates[0];
 
   if (!topCandidate) {
     return {
@@ -50,28 +44,25 @@ export function resolveOpenFileTarget(
     };
   }
 
-  if (
-    topCandidate.score < minDirectScore &&
-    (!finalTokenPreference.usedPreference ||
-      topCandidate.score < minDirectScore - 25)
-  ) {
+  if (topCandidate.score < minDirectScore) {
     return {
       kind: "none",
       reason: `No Markdown note matched "${options.query}" with enough confidence.`
     };
   }
 
-  const secondCandidate = orderedCandidates[1];
+  const secondCandidate = candidates[1];
 
   if (
-    !finalTokenPreference.usedPreference &&
     secondCandidate &&
     secondCandidate.score >= minDirectScore &&
     topCandidate.score - secondCandidate.score < ambiguityGap
   ) {
     return {
       kind: "clarify",
-      candidates: orderedCandidates.slice(0, maxClarifyCandidates),
+      candidates: candidates
+        .filter((candidate) => candidate.score >= minDirectScore)
+        .slice(0, maxClarifyCandidates),
       reason: "Multiple Markdown notes matched the requested file."
     };
   }
@@ -85,38 +76,4 @@ export function resolveOpenFileTarget(
 
 function normalizeVaultPath(path: string): string {
   return path.replaceAll("\\", "/");
-}
-
-function preferDistinctiveFinalTokenCandidate(
-  candidates: OpenFilePathCandidate[],
-  query: string
-): { candidates: OpenFilePathCandidate[]; usedPreference: boolean } {
-  const tokens = normalizeOpenFileValue(query).split(/\s+/).filter(Boolean);
-  const finalToken = tokens.at(-1);
-  const topCandidate = candidates[0];
-
-  if (!finalToken || finalToken.length < 3 || !topCandidate) {
-    return { candidates, usedPreference: false };
-  }
-
-  if (normalizeOpenFileValue(topCandidate.path).includes(finalToken)) {
-    return { candidates, usedPreference: false };
-  }
-
-  const finalTokenMatches = candidates.filter((candidate) =>
-    normalizeOpenFileValue(candidate.path).includes(finalToken)
-  );
-
-  if (!finalTokenMatches.length) {
-    return { candidates, usedPreference: false };
-  }
-
-  const remainingCandidates = candidates.filter(
-    (candidate) => !finalTokenMatches.includes(candidate)
-  );
-
-  return {
-    candidates: [...finalTokenMatches, ...remainingCandidates],
-    usedPreference: true
-  };
 }
