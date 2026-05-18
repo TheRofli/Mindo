@@ -74,6 +74,10 @@ assert.ok(
   isAutoWebContextGuardedBeforePlannerFallback(sidebarView),
   "Expected AgentSidebarView.buildAutoWebContextForRequest to skip vault-local prompts before planner fallback."
 );
+assert.ok(
+  isSidebarExplicitWebIntentPhraseBased(sidebarView),
+  "Expected AgentSidebarView.decideAutoWebResearch explicit web intent to avoid bare topical 'web'."
+);
 
 console.log("mindoUiPolish tests passed");
 
@@ -195,5 +199,20 @@ function isAutoWebContextGuardedBeforePlannerFallback(source: string): boolean {
     localOnlyIndex >= 0 &&
     vaultLocalIndex > localOnlyIndex &&
     plannerIndex > vaultLocalIndex
+  );
+}
+
+function isSidebarExplicitWebIntentPhraseBased(source: string): boolean {
+  const method = source.match(
+    /function decideAutoWebResearch[\s\S]*?function buildAutoWebResearchQuery/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return (
+    method.includes("const explicitWeb = hasExplicitWebIntent(userRequest);") &&
+    !method.includes('"web"')
   );
 }

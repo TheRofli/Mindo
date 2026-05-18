@@ -156,7 +156,10 @@ import {
   serializeChatMessagesForNote,
   trimChatTitle
 } from "../chat/chatMessages";
-import { isVaultLocalDescriptionRequest } from "../chat/autoWebGuards";
+import {
+  hasExplicitWebIntent,
+  isVaultLocalDescriptionRequest
+} from "../chat/autoWebGuards";
 import { planContextWorkflow } from "../web/workflowPlanner";
 import {
   ensureContexWikiStructure,
@@ -9489,16 +9492,7 @@ function decideAutoWebResearch(
       "up to date",
       "as of"
     ]) || /\b20\d{2}\b/.test(normalized);
-  const explicitWeb =
-    includesAny(normalized, [
-      "в интернете",
-      "в вебе",
-      "web",
-      "internet",
-      "гугл",
-      "поиск в сети",
-      "online"
-    ]);
+  const explicitWeb = hasExplicitWebIntent(userRequest);
   const verificationIntent = includesAny(normalized, [
     "проверь",
     "провести проверку",
