@@ -439,6 +439,7 @@ function formatProjectMemoryContext(projectMemory: string): string {
 function formatVaultSearchContext(results: VaultSearchResult[]): string {
   return [
     "Relevant Markdown notes from the user's vault search are included below. Use them when helpful, and cite note paths when referring to specific notes.",
+    "Do not invent web-backed facts from these vault snippets. If the user needs fresh web information, say that web context was not provided.",
     "",
     ...results.map((result, index) =>
       [

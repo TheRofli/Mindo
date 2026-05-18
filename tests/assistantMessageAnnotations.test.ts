@@ -39,6 +39,54 @@ const createAssistant = (): ChatMessage => ({
 {
   const assistant = createAssistant();
   const context: LlmRequestContext = {
+    vaultResults: [
+      {
+        path: "Notes/Local.md",
+        title: "Local",
+        snippet: "Local snippet",
+        score: 120
+      }
+    ],
+    webResults: []
+  };
+
+  annotateAssistantMessageFromContext(assistant, context, "explain local");
+  assert.equal(assistant.sources?.length, 1);
+  assert.equal(assistant.webSources, undefined);
+  assert.equal(assistant.webResearchResults, undefined);
+}
+
+{
+  const assistant = createAssistant();
+  const context: LlmRequestContext = {
+    vaultResults: [
+      {
+        path: "Notes/Local.md",
+        title: "Local",
+        snippet: "Local snippet",
+        score: 120
+      }
+    ],
+    webResults: [
+      {
+        title: "Web",
+        url: "https://example.com/web",
+        snippet: "Web snippet",
+        provider: "DuckDuckGo"
+      }
+    ],
+    webResearchReason: "explicit web request"
+  };
+
+  annotateAssistantMessageFromContext(assistant, context, "compare with web");
+  assert.equal(assistant.sources?.length, 1);
+  assert.equal(assistant.webSources?.length, 1);
+  assert.equal(assistant.webResearchQuery, "compare with web");
+}
+
+{
+  const assistant = createAssistant();
+  const context: LlmRequestContext = {
     webResearchQuery: "local llm",
     webSearchQuery: "latest local llm",
     webResearchProvider: "DuckDuckGo",

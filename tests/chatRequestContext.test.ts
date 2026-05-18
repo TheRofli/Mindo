@@ -47,6 +47,22 @@ const webContext: AutoWebContext = {
 }
 
 {
+  const vaultResult = {
+    path: "Notes/Local.md",
+    title: "Local",
+    snippet: "Local snippet",
+    score: 120
+  };
+  const baseContext = {
+    vaultResults: [vaultResult]
+  };
+  const result = attachAutoWebContextToRequest(baseContext, null);
+
+  assert.equal(result, baseContext);
+  assert.deepEqual(result?.vaultResults, [vaultResult]);
+}
+
+{
   const original = { projectMemory: "Already present" };
   const result = attachProjectMemoryToRequest(original, "New memory");
 
