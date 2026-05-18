@@ -38,7 +38,7 @@ assert.deepEqual(getActionText("en", "vault-recall"), {
 });
 assert.deepEqual(getActionText("en", "connect-note"), {
   label: "Connect this note",
-  description: "Find related notes and explain the strongest links.",
+  description: "Find notes that connect to the active note.",
   title: "Note Connections"
 });
 assert.deepEqual(getActionText("en", "improve-draft"), {
@@ -48,8 +48,8 @@ assert.deepEqual(getActionText("en", "improve-draft"), {
 });
 assert.deepEqual(getActionText("ru", "vault-recall"), {
   label: "Спросить vault",
-  description: "Найти, что заметки уже говорят о текущей идее.",
-  title: "Vault recall"
+  description: "Найти, что твои заметки уже говорят об этой идее.",
+  title: "Память vault"
 });
 assert.deepEqual(getActionText("ru", "connect-note"), {
   label: "Связать заметку",

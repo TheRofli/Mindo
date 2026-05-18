@@ -28,7 +28,7 @@ assert.ok(connectNoteAction);
 assert.equal(getSuggestionTitle(connectNoteAction), "Note Connections");
 assert.equal(
   getActionDescription(connectNoteAction),
-  "Find related notes and explain the strongest links."
+  "Find notes that connect to the active note."
 );
 
 const improveDraftAction = NOTE_ACTIONS.find(

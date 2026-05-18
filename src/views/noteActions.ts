@@ -73,7 +73,7 @@ export function getActionDescription(action: NoteAction): string {
   }
 
   if (actionId === "connect-note") {
-    return "Find related notes and explain the strongest links.";
+    return "Find notes that connect to the active note.";
   }
 
   if (actionId === "improve-draft") {

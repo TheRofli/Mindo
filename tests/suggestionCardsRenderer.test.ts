@@ -15,7 +15,7 @@ assert.deepEqual(
   englishCards.map((card) => card.description),
   [
     "Find what your notes already say about the current idea.",
-    "Find related notes and explain the strongest links.",
+    "Find notes that connect to the active note.",
     "Draft a clearer version through preview/diff."
   ]
 );
@@ -37,7 +37,7 @@ assert.deepEqual(
 assert.deepEqual(
   russianCards.map((card) => card.description),
   [
-    "Найти, что заметки уже говорят о текущей идее.",
+    "Найти, что твои заметки уже говорят об этой идее.",
     "Найти заметки, которые связаны с текущей.",
     "Подготовить более ясную версию через preview/diff."
   ]

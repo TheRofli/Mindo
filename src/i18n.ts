@@ -135,7 +135,7 @@ const ACTION_TEXT: Record<UiLanguage, Record<string, LocalizedActionText>> = {
     },
     "connect-note": {
       label: "Connect this note",
-      description: "Find related notes and explain the strongest links.",
+      description: "Find notes that connect to the active note.",
       title: "Note Connections"
     },
     "improve-draft": {
@@ -177,8 +177,8 @@ const ACTION_TEXT: Record<UiLanguage, Record<string, LocalizedActionText>> = {
   ru: {
     "vault-recall": {
       label: "Спросить vault",
-      description: "Найти, что заметки уже говорят о текущей идее.",
-      title: "Vault recall"
+      description: "Найти, что твои заметки уже говорят об этой идее.",
+      title: "Память vault"
     },
     "connect-note": {
       label: "Связать заметку",
