@@ -35,6 +35,8 @@ const attachment: LlmFileAttachment = {
   });
 
   assert.ok(prompt.includes("Rewrite the current Markdown note"));
+  assert.ok(prompt.includes("Return only the full replacement Markdown"));
+  assert.ok(prompt.includes("Do not claim that the note has already been changed"));
   assert.ok(prompt.includes("User update request:\nRefresh this note"));
   assert.ok(prompt.includes("Web context block"));
   assert.ok(prompt.includes("Project memory block"));

@@ -57,6 +57,7 @@ export function buildCurrentNoteUpdatePrompt(
     "Rewrite the current Markdown note into a clearer, better structured version.",
     "Preserve facts, meaning, language, links, frontmatter, code blocks, and important headings.",
     "Return only the full replacement Markdown. Do not add explanations, quotes, code fences, or hidden TTS comments.",
+    "Do not claim that the note has already been changed; Mindo will show this as a preview/diff before applying it.",
     "",
     "User update request:",
     options.userPrompt,

@@ -79,7 +79,7 @@ export async function applyDiffPreviewChange(
     receipt: {
       status: "done",
       label: "Applied change",
-      detail: filePath,
+      detail: `Updated ${filePath} with previewed Markdown replacement.`,
       path: filePath
     }
   };
@@ -135,7 +135,7 @@ function createRevertedReceipt(filePath: string): ActionReceipt {
   return {
     status: "reverted",
     label: "Reverted change",
-    detail: filePath,
+    detail: `Reverted previewed Markdown replacement in ${filePath}.`,
     path: filePath
   };
 }

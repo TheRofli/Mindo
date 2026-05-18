@@ -51,7 +51,7 @@ function createPreview(
   assert.deepEqual(result.receipt, {
     status: "done",
     label: "Applied change",
-    detail: "Test/Test.md",
+    detail: "Updated Test/Test.md with previewed Markdown replacement.",
     path: "Test/Test.md"
   });
 }
@@ -79,6 +79,10 @@ function createPreview(
   assert.equal(rolledBackId, "op1");
   assert.equal(preview.status, "reverted");
   assert.equal(result.receipt.status, "reverted");
+  assert.equal(
+    result.receipt.detail,
+    "Reverted previewed Markdown replacement in Test/Test.md."
+  );
   assert.equal(result.receipt.path, "Test/Test.md");
 }
 
@@ -102,6 +106,10 @@ function createPreview(
   assert.equal(written, "hello old world");
   assert.equal(preview.status, "reverted");
   assert.equal(result.receipt.label, "Reverted change");
+  assert.equal(
+    result.receipt.detail,
+    "Reverted previewed Markdown replacement in Test/Test.md."
+  );
 }
 
 {
