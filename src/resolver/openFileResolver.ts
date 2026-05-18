@@ -73,6 +73,7 @@ export function scoreOpenFilePathCandidate(
   const compactQuery = compactOpenFileValue(normalizedQuery);
   const compactBasename = compactOpenFileValue(normalizedBasename);
   const firstToken = tokens[0];
+  const finalToken = tokens.length > 1 ? tokens[tokens.length - 1] : undefined;
   let score = 0;
 
   if (normalizedFolderQuery) {
@@ -158,6 +159,14 @@ export function scoreOpenFilePathCandidate(
       score += 25;
     }
   });
+
+  if (finalToken && finalToken.length >= 3) {
+    if (normalizedBasename.includes(finalToken)) {
+      score += 240;
+    } else if (normalizedPath.includes(finalToken)) {
+      score += 80;
+    }
+  }
 
   const coveredTokens = tokens.filter((token) =>
     normalizedPath.includes(token)

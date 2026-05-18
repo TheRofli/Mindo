@@ -61,4 +61,19 @@ assert.equal(
   "Proton/qquark-app.md"
 );
 
+const distinctiveFinalTokenPaths = [
+  "Proton/Qore Systems Cases.md",
+  "Proton/Qore Systems Strategy.md",
+  "Proton/Quark One.md",
+  "Archive/Core System Notes.md"
+];
+
+assert.equal(
+  rankOpenFilePathCandidates(
+    distinctiveFinalTokenPaths,
+    "core system strategy"
+  )[0]?.path,
+  "Proton/Qore Systems Strategy.md"
+);
+
 console.log("openFileResolver tests passed");
