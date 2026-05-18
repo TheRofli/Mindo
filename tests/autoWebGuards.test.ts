@@ -25,6 +25,10 @@ assert.equal(isVaultLocalDescriptionRequest("What's in the current note?"), true
 
 assert.equal(isVaultLocalDescriptionRequest("Tell me about the current note"), true);
 
+assert.equal(isVaultLocalDescriptionRequest("Review the current note"), true);
+
+assert.equal(isVaultLocalDescriptionRequest("Analyze the current note"), true);
+
 assert.equal(
   isVaultLocalDescriptionRequest("What is in the current note about internet architecture?"),
   true
@@ -125,8 +129,19 @@ assert.equal(isVaultLocalDescriptionRequest("Search notes about latest LLM tools
 
 assert.equal(isVaultLocalDescriptionRequest("Find files about latest LLM tools"), true);
 
+assert.equal(isVaultLocalDescriptionRequest("Find note about latest LLM tools"), true);
+
+assert.equal(isVaultLocalDescriptionRequest("Find file about latest LLM tools"), true);
+
+assert.equal(isVaultLocalDescriptionRequest("List notes about latest LLM tools"), true);
+
 assert.equal(
   isVaultLocalDescriptionRequest("Find notes about latest LLM tools using web search"),
+  false
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Search online for qore systems strategy"),
   false
 );
 

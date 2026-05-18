@@ -104,6 +104,35 @@ function baseOptions(overrides: Record<string, unknown> = {}) {
 
   const context = await buildAutoWebContext(
     baseOptions({
+      userRequest: "Review the current note",
+      isLocalOnlyCommandText: () => false,
+      decideAutoWebResearch: () => ({
+        query: "current note",
+        reason: "freshness requested"
+      }),
+      planContextWorkflow: () => ({
+        requiresWeb: true,
+        reason: "time-sensitive request"
+      }),
+      searchWeb: async () => {
+        searched = true;
+        return {
+          provider: "duckduckgo",
+          results: [webResult]
+        };
+      }
+    })
+  );
+
+  assert.equal(context, null);
+  assert.equal(searched, false);
+}
+
+{
+  let searched = false;
+
+  const context = await buildAutoWebContext(
+    baseOptions({
       userRequest: "What is in the current note?",
       isLocalOnlyCommandText: () => false,
       decideAutoWebResearch: () => ({
@@ -348,6 +377,61 @@ function baseOptions(overrides: Record<string, unknown> = {}) {
 
   assert.equal(context, null);
   assert.equal(searched, false);
+}
+
+{
+  let searched = false;
+
+  const context = await buildAutoWebContext(
+    baseOptions({
+      userRequest: "Find note about latest LLM tools",
+      isLocalOnlyCommandText: () => false,
+      decideAutoWebResearch: () => ({
+        query: "latest LLM tools",
+        reason: "freshness requested"
+      }),
+      planContextWorkflow: () => ({
+        requiresWeb: true,
+        reason: "time-sensitive request"
+      }),
+      searchWeb: async () => {
+        searched = true;
+        return {
+          provider: "duckduckgo",
+          results: [webResult]
+        };
+      }
+    })
+  );
+
+  assert.equal(context, null);
+  assert.equal(searched, false);
+}
+
+{
+  let searched = false;
+
+  const context = await buildAutoWebContext(
+    baseOptions({
+      userRequest: "Search online for qore systems strategy",
+      isLocalOnlyCommandText: () => false,
+      decideAutoWebResearch: () => ({
+        query: "qore systems strategy",
+        reason: "web requested"
+      }),
+      searchWeb: async (_settings: unknown, query: string) => {
+        searched = true;
+        return {
+          provider: "duckduckgo",
+          fallbackReason: query.includes("May") ? "direct" : undefined,
+          results: [webResult]
+        };
+      }
+    })
+  );
+
+  assert.equal(searched, true);
+  assert.equal(context?.provider, "duckduckgo");
 }
 
 {

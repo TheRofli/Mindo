@@ -5,6 +5,17 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     return false;
   }
 
+  const anchoredLocalTarget = includesAnyLocalPhrase(normalized, [
+    "current note",
+    "this note",
+    "open note",
+    "opened note",
+    "this file",
+    "file path",
+    "open file",
+    "opened file",
+    "active note"
+  ]);
   const explicitLocalTarget = includesAny(normalized, [
     "открыт",
     "текущ",
@@ -24,24 +35,14 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "my vault",
     "in my vault",
     "from my vault"
-  ]) || includesAnyLocalPhrase(normalized, [
-    "current note",
-    "this note",
-    "open note",
-    "opened note",
-    "this file",
-    "file path",
-    "open file",
-    "opened file",
-    "active note"
-  ]);
+  ]) || anchoredLocalTarget;
   const genericLocalTarget =
     hasLocalAnchor(normalized) &&
     includesAnyWord(normalized, ["file", "files", "note", "notes", "path", "vault"]);
-  const pluralSearchTarget =
-    includesAnyWord(normalized, ["files", "notes"]) &&
+  const noteFileSearchTarget =
+    includesAnyWord(normalized, ["file", "files", "note", "notes"]) &&
     hasSearchStyleIntent(normalized);
-  const localTarget = explicitLocalTarget || genericLocalTarget || pluralSearchTarget;
+  const localTarget = explicitLocalTarget || genericLocalTarget || noteFileSearchTarget;
   const descriptionIntent = includesAny(normalized, [
     "опиши",
     "описать",
@@ -57,6 +58,9 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "искать",
     "покажи",
     "открой",
+    "review",
+    "analyze",
+    "list",
     "summarize",
     "describe",
     "explain",
@@ -71,7 +75,7 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "open"
   ]);
 
-  return localTarget && descriptionIntent;
+  return anchoredLocalTarget || (localTarget && descriptionIntent);
 }
 
 export function hasExplicitWebIntent(userRequest: string): boolean {
@@ -93,6 +97,7 @@ export function hasExplicitWebIntent(userRequest: string): boolean {
     "using the internet",
     "use internet",
     "online search",
+    "search online",
     "online research",
     "online sources",
     "online source",
@@ -155,6 +160,9 @@ function hasSearchStyleIntent(text: string): boolean {
     "search",
     "show",
     "read",
+    "open",
+    "review",
+    "analyze",
     "list",
     "найди",
     "найти",
