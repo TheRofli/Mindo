@@ -24,6 +24,7 @@ import type {
   LlmRequestContext,
   VaultSearchResult
 } from "../types";
+import { hasExplicitWebIntent } from "../chat/autoWebGuards";
 
 const PROJECT_MEMORY_FOLDER = "Mindo Memory";
 
@@ -296,16 +297,7 @@ export function decideAutoWebResearch(
       "up to date",
       "as of"
     ]) || /\b20\d{2}\b/.test(normalized);
-  const explicitWeb =
-    includesAny(normalized, [
-      "в интернете",
-      "в вебе",
-      "web",
-      "internet",
-      "гугл",
-      "поиск в сети",
-      "online"
-    ]);
+  const explicitWeb = hasExplicitWebIntent(userRequest);
   const verificationIntent = includesAny(normalized, [
     "проверь",
     "провести проверку",
@@ -520,7 +512,7 @@ export function isProjectMemoryFile(path: string): boolean {
 export function shouldUseWebForResearchWorkflow(commandText: string): boolean {
   const normalized = normalizeVoiceCommandText(commandText);
 
-  return includesAny(normalized, [
+  return hasExplicitWebIntent(commandText) || includesAny(normalized, [
     "\u0430\u043a\u0442\u0443\u0430\u043b",
     "\u0441\u0432\u0435\u0436",
     "\u043f\u043e\u0441\u043b\u0435\u0434\u043d",
@@ -531,7 +523,6 @@ export function shouldUseWebForResearchWorkflow(commandText: string): boolean {
     "\u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442",
     "\u043c\u043e\u0434\u0435\u043b",
     "\u0438\u0438",
-    "web",
     "internet",
     "latest",
     "current",

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
   cleanSuggestedReplacement,
+  decideAutoWebResearch,
   normalizeNoisyLocalCommandText,
-  parseVoiceOpenFileQuery
+  parseVoiceOpenFileQuery,
+  shouldUseWebForResearchWorkflow
 } from "../src/views/sidebarPureHelpers";
 
 assert.equal(
@@ -34,6 +36,25 @@ assert.equal(
     "\u0438\u043c\u0435\u043d\u043d\u043e \u041a\u043e\u0440 \u0441\u0438\u0441\u0442\u0435\u043c \u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438"
   ),
   "\u041a\u043e\u0440 \u0441\u0438\u0441\u0442\u0435\u043c \u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438"
+);
+
+assert.equal(decideAutoWebResearch("Explain Web Components"), null);
+assert.equal(
+  decideAutoWebResearch("search the web for Web Components")?.query,
+  "search the web for Web Components"
+);
+assert.equal(
+  decideAutoWebResearch("Describe Web Components with web research")?.query,
+  "Describe Web Components with web research"
+);
+assert.equal(shouldUseWebForResearchWorkflow("Describe Web Components"), false);
+assert.equal(
+  shouldUseWebForResearchWorkflow("search the web for Web Components"),
+  true
+);
+assert.equal(
+  shouldUseWebForResearchWorkflow("Describe Web Components with web sources"),
+  true
 );
 
 console.log("sidebarPureHelpers tests passed");
