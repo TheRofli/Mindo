@@ -1,5 +1,5 @@
 export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
-  const normalized = userRequest.toLocaleLowerCase().replace(/\s+/g, " ").trim();
+  const normalized = normalizeRequestText(userRequest);
 
   if (!normalized || hasExplicitWebIntent(normalized)) {
     return false;
@@ -11,10 +11,20 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "этот файл",
     "эту заметку",
     "активн",
+    "мой vault",
+    "моем vault",
+    "моём vault",
+    "в vault",
+    "из vault",
+    "в хранилище",
+    "из хранилища",
     "current note",
     "open file",
     "opened file",
-    "active note"
+    "active note",
+    "my vault",
+    "in my vault",
+    "from my vault"
   ]);
   const descriptionIntent = includesAny(normalized, [
     "опиши",
@@ -22,26 +32,44 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "объясни",
     "объяснить",
     "о чем",
+    "о чём",
     "что это",
+    "найди",
+    "найти",
+    "покажи",
+    "открой",
     "summarize",
     "describe",
     "explain",
-    "what is this"
+    "what is this",
+    "find",
+    "show",
+    "open"
   ]);
 
   return localTarget && descriptionIntent;
 }
 
-function hasExplicitWebIntent(normalizedText: string): boolean {
-  return includesAny(normalizedText, [
+export function hasExplicitWebIntent(userRequest: string): boolean {
+  const normalized = normalizeRequestText(userRequest);
+
+  return includesAny(normalized, [
     "в интернете",
     "в вебе",
     "поиск в сети",
+    "поищи в интернете",
+    "загугли",
     "гугл",
     "web",
     "internet",
-    "online"
+    "online",
+    "search the web",
+    "google"
   ]);
+}
+
+export function normalizeRequestText(value: string): string {
+  return value.toLocaleLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function includesAny(text: string, needles: string[]): boolean {

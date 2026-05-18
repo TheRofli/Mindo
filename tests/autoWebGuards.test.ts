@@ -17,4 +17,21 @@ assert.equal(
 
 assert.equal(isVaultLocalDescriptionRequest("latest local LLM releases"), false);
 
+assert.equal(isVaultLocalDescriptionRequest("What is this active note about?"), true);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Explain the opened file and use my vault notes."),
+  true
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Find qore systems strategy in my vault"),
+  true
+);
+
+assert.equal(
+  isVaultLocalDescriptionRequest("Search the web for qore systems strategy"),
+  false
+);
+
 console.log("autoWebGuards tests passed");

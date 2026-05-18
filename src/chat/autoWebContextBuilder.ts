@@ -7,6 +7,7 @@ import type {
   AutoWebContext,
   AutoWebDecision
 } from "../views/sidebarTypes";
+import { isVaultLocalDescriptionRequest } from "./autoWebGuards";
 
 export interface AutoWebWorkflowPlan {
   requiresWeb: boolean;
@@ -58,6 +59,10 @@ export async function buildAutoWebContext<
   options: BuildAutoWebContextOptions<TSettings>
 ): Promise<AutoWebContext | null> {
   if (options.isLocalOnlyCommandText(options.userRequest)) {
+    return null;
+  }
+
+  if (isVaultLocalDescriptionRequest(options.userRequest)) {
     return null;
   }
 

@@ -77,6 +77,34 @@ async function run() {
   }
 
   {
+    let semanticSearchRan = false;
+    const result = await buildUserMessageRequestContext({
+      content: "Find qore systems strategy in my vault",
+      liveDialogue: false,
+      useCurrentNote: true,
+      useVaultSearch: true,
+      outgoingAttachments: null,
+      attachedVaultResults: null,
+      readCurrentNoteContext: async () => ({ context: currentNote }),
+      expandSemanticVaultQuery: async (query) => {
+        assert.equal(query, "Find qore systems strategy in my vault");
+        return ["qore systems strategy"];
+      },
+      searchSemanticVault: async (query, variants, limit) => {
+        semanticSearchRan = true;
+        assert.equal(query, "Find qore systems strategy in my vault");
+        assert.deepEqual(variants, ["qore systems strategy"]);
+        assert.equal(limit, 8);
+        return [vaultResult];
+      }
+    });
+
+    assert.equal(semanticSearchRan, true);
+    assert.deepEqual(result.context?.currentNote, currentNote);
+    assert.deepEqual(result.context?.vaultResults, [vaultResult]);
+  }
+
+  {
     const result = await buildUserMessageRequestContext({
       content: "use attached",
       liveDialogue: false,
