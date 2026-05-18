@@ -48,6 +48,7 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "explain",
     "what is this",
     "find",
+    "search",
     "show",
     "open"
   ]);
@@ -68,6 +69,9 @@ export function hasExplicitWebIntent(userRequest: string): boolean {
     "internet",
     "online",
     "search the web",
+    "web research",
+    "web sources",
+    "web source",
     "google"
   ]);
 }
