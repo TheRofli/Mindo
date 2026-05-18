@@ -24,6 +24,10 @@ assert.equal(
   true
 );
 
+assert.equal(isVaultLocalDescriptionRequest("Explain the opened note."), true);
+
+assert.equal(isVaultLocalDescriptionRequest("Describe the open note."), true);
+
 assert.equal(
   isVaultLocalDescriptionRequest("Find qore systems strategy in my vault"),
   true

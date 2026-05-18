@@ -19,6 +19,8 @@ export function isVaultLocalDescriptionRequest(userRequest: string): boolean {
     "в хранилище",
     "из хранилища",
     "current note",
+    "open note",
+    "opened note",
     "open file",
     "opened file",
     "active note",
