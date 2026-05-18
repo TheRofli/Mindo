@@ -152,6 +152,10 @@ import { renderMessageAttachments } from "../attachments/attachmentDisplay";
 import { formatChatMessageRoleLabel } from "./chatViewRenderer";
 import { buildTextReplacementDiffPreview } from "../diff/diffService";
 import {
+  applyDiffPreviewChange,
+  undoDiffPreviewChange
+} from "../diff/diffPreviewWorkflow";
+import {
   escapeMarkdownLinkText,
   findLatestUserMessage,
   formatActionReceiptStatus,
@@ -651,6 +655,7 @@ export class ContexAgentView extends ItemView {
                 "Rewrite the current Markdown note into a clearer, better structured version.",
                 "Preserve facts, meaning, language, links, frontmatter, code blocks, and important headings.",
                 "Return only the full replacement Markdown. Do not add explanations, quotes, code fences, or hidden TTS comments.",
+                "Do not claim that the note has already been changed; Mindo will show this as a preview/diff before applying it.",
                 "",
                 "User update request:",
                 userPrompt,
@@ -5399,38 +5404,22 @@ export class ContexAgentView extends ItemView {
     this.setLoading(true);
 
     try {
-      const currentContent = await this.app.vault.read(file);
-      const nextContent = replaceSelectedOccurrence(
-        currentContent,
-        diffPreview.original,
-        diffPreview.suggested,
-        diffPreview.originalOccurrenceIndex
-      );
-      const operation = await recordAiChangeOperation(this.app, {
-        operationType: diffPreview.operationType ?? "improve-selection",
+      const result = await applyDiffPreviewChange({
+        diffPreview,
         filePath: file.path,
-        beforeContent: currentContent,
-        afterContent: nextContent,
-        selectedBefore: diffPreview.original,
-        selectedAfter: diffPreview.suggested,
         model: this.plugin.settings.model,
-        userPrompt: diffPreview.userPrompt ?? "Improve selection"
+        readContent: () => this.app.vault.read(file),
+        writeContent: (content) => this.app.vault.modify(file, content),
+        recordOperation: (input) => recordAiChangeOperation(this.app, input),
+        markOperationApplied: (operationId) =>
+          markAiChangeOperationApplied(this.app, operationId)
       });
 
-      await this.app.vault.modify(file, nextContent);
-      await markAiChangeOperationApplied(this.app, operation.id);
-      diffPreview.historyOperationId = operation.id;
-      diffPreview.status = "applied";
       this.activeRefineMessageId = null;
       clearInlineDiffPreview(this.app, file.path);
       this.statusEl?.setText("Status: Applied");
       new Notice("Mindo applied the suggested replacement.");
-      this.appendActionReceipt({
-        status: "done",
-        label: "Applied change",
-        detail: file.path,
-        path: file.path
-      });
+      this.appendActionReceipt(result.receipt);
     } catch (error) {
       this.setError(this.getErrorMessage(error));
       this.statusEl?.setText("Status: Apply failed");
@@ -5460,56 +5449,19 @@ export class ContexAgentView extends ItemView {
     this.setLoading(true);
 
     try {
-      if (diffPreview.historyOperationId) {
-        await rollbackAiChangeOperation(
-          this.app,
-          diffPreview.historyOperationId
-        );
-        diffPreview.status = "reverted";
-        this.activeRefineMessageId = null;
-        this.statusEl?.setText("Status: Reverted");
-        new Notice("Mindo reverted the accepted replacement.");
-        this.appendActionReceipt({
-          status: "reverted",
-          label: "Reverted change",
-          detail: file.path,
-          path: file.path
-        });
-        return;
-      }
+      const result = await undoDiffPreviewChange({
+        diffPreview,
+        filePath: file.path,
+        readContent: () => this.app.vault.read(file),
+        writeContent: (content) => this.app.vault.modify(file, content),
+        rollbackOperation: (operationId) =>
+          rollbackAiChangeOperation(this.app, operationId)
+      });
 
-      const currentContent = await this.app.vault.read(file);
-      const occurrenceCount = countOccurrences(
-        currentContent,
-        diffPreview.suggested
-      );
-
-      if (occurrenceCount === 0) {
-        throw new Error(
-          "Suggested text was not found in the source note. The note may have changed."
-        );
-      }
-
-      if (occurrenceCount > 1) {
-        throw new Error(
-          "Suggested text appears more than once. Undo would be ambiguous."
-        );
-      }
-
-      await this.app.vault.modify(
-        file,
-        currentContent.replace(diffPreview.suggested, diffPreview.original)
-      );
-      diffPreview.status = "reverted";
       this.activeRefineMessageId = null;
       this.statusEl?.setText("Status: Reverted");
       new Notice("Mindo reverted the accepted replacement.");
-      this.appendActionReceipt({
-        status: "reverted",
-        label: "Reverted change",
-        detail: file.path,
-        path: file.path
-      });
+      this.appendActionReceipt(result.receipt);
     } catch (error) {
       this.setError(this.getErrorMessage(error));
       this.statusEl?.setText("Status: Undo failed");

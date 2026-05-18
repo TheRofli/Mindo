@@ -94,6 +94,18 @@ assert.ok(
   isUpdateCurrentNoteActionPromptForwarded(sidebarView),
   "Expected AgentSidebarView.runNoteAction to pass update-current-note action prompts into updateCurrentNote."
 );
+assert.ok(
+  isCurrentNoteUpdatePromptPreviewFirst(sidebarView),
+  "Expected AgentSidebarView.updateCurrentNote prompt to warn that Mindo shows a preview/diff before applying changes."
+);
+assert.ok(
+  isDiffApplyDelegatedToWorkflow(sidebarView),
+  "Expected AgentSidebarView.applyDiffPreview to use diffPreviewWorkflow receipt wording instead of inline stale details."
+);
+assert.ok(
+  isDiffUndoDelegatedToWorkflow(sidebarView),
+  "Expected AgentSidebarView.undoDiffPreview to use diffPreviewWorkflow receipt wording for both rollback and content replacement undo."
+);
 
 console.log("mindoUiPolish tests passed");
 
@@ -318,5 +330,53 @@ function isUpdateCurrentNoteActionPromptForwarded(source: string): boolean {
     ) &&
     method.includes('if (action.kind === "update-current-note")') &&
     method.includes("await this.updateCurrentNote(action.prompt);")
+  );
+}
+
+function isCurrentNoteUpdatePromptPreviewFirst(source: string): boolean {
+  const method = source.match(
+    /async updateCurrentNote\(userPrompt = "Update the current note safely\."\): Promise<void>[\s\S]*?async createRoadmapFromCurrentNote/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return method.includes(
+    "Do not claim that the note has already been changed; Mindo will show this as a preview/diff before applying it."
+  );
+}
+
+function isDiffApplyDelegatedToWorkflow(source: string): boolean {
+  const method = source.match(
+    /private async applyDiffPreview\(messageId: string\): Promise<void>[\s\S]*?private async undoDiffPreview/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return (
+    source.includes("applyDiffPreviewChange") &&
+    method.includes("applyDiffPreviewChange") &&
+    method.includes("this.appendActionReceipt(result.receipt)") &&
+    !method.includes("detail: file.path")
+  );
+}
+
+function isDiffUndoDelegatedToWorkflow(source: string): boolean {
+  const method = source.match(
+    /private async undoDiffPreview\(messageId: string\): Promise<void>[\s\S]*?private async refineDiffPreview/u
+  )?.[0];
+
+  if (!method) {
+    return false;
+  }
+
+  return (
+    source.includes("undoDiffPreviewChange") &&
+    method.includes("undoDiffPreviewChange") &&
+    method.includes("this.appendActionReceipt(result.receipt)") &&
+    !method.includes("detail: file.path")
   );
 }
